@@ -1,0 +1,22 @@
+{
+  "name": "hatch",
+  "version": "1.0.0",
+  "description": "Universal Cmd+K command palette for the browser",
+  "private": true,
+  "author": {
+    "name": "Sounak Das"
+  },
+  "scripts": {
+    "build": "node esbuild.config.js",
+    "watch": "node esbuild.config.js --watch",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.1.38",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "quickfuzz": "^1.0.2"
+  }
+}
