@@ -1,7 +1,8 @@
-import type { HatchCommand, CommandContext } from '../../types';
+import type { CommandContext, EditorType } from '../../types';
 import type { FuzzyResult } from './fuzzy';
 import { CommandRegistry } from './CommandRegistry';
 import { paletteCSS } from './palette.css';
+import { sendMessage } from '../commands/tabs';
 
 export class Palette {
   private host: HTMLDivElement;
@@ -18,6 +19,10 @@ export class Palette {
   private searchDebounceTimer: number | null = null;
   private selectedItems: Set<string> = new Set(); // multi-select by command ID
   private batchBar: HTMLDivElement | null = null;
+  private resultCount!: HTMLSpanElement;
+  private editorMode: EditorType | null = null;
+  private inputWrapper!: HTMLDivElement;
+  private footer!: HTMLDivElement;
 
   constructor() {
     this.registry = new CommandRegistry();
@@ -49,7 +54,8 @@ export class Palette {
     this.container.setAttribute('aria-label', 'Hatch Command Palette');
 
     // Input wrapper
-    const inputWrapper = document.createElement('div');
+    this.inputWrapper = document.createElement('div');
+    const inputWrapper = this.inputWrapper;
     inputWrapper.className = 'hatch-input-wrapper';
 
     const searchIcon = document.createElement('span');
@@ -79,17 +85,34 @@ export class Palette {
     this.resultsList.setAttribute('role', 'listbox');
 
     // Footer
-    const footer = document.createElement('div');
+    this.footer = document.createElement('div');
+    const footer = this.footer;
     footer.className = 'hatch-footer';
-    footer.innerHTML = `
-      <div class="hatch-footer-hints">
-        <span class="hatch-hint"><kbd>↑↓</kbd> navigate</span>
-        <span class="hatch-hint"><kbd>↵</kbd> open</span>
-        <span class="hatch-hint"><kbd>⌘↵</kbd> new tab</span>
-        <span class="hatch-hint"><kbd>esc</kbd> close</span>
-      </div>
-      <span class="hatch-brand">Hatch</span>
+
+    const footerHints = document.createElement('div');
+    footerHints.className = 'hatch-footer-hints';
+    footerHints.innerHTML = `
+      <span class="hatch-hint"><kbd>↑↓</kbd> navigate</span>
+      <span class="hatch-hint"><kbd>↵</kbd> open</span>
+      <span class="hatch-hint"><kbd>⌘↵</kbd> new tab</span>
+      <span class="hatch-hint"><kbd>esc</kbd> close</span>
     `;
+
+    const footerRight = document.createElement('div');
+    footerRight.className = 'hatch-footer-right';
+
+    this.resultCount = document.createElement('span');
+    this.resultCount.className = 'hatch-result-count';
+
+    const brand = document.createElement('span');
+    brand.className = 'hatch-brand';
+    brand.textContent = 'Hatch';
+
+    footerRight.appendChild(this.resultCount);
+    footerRight.appendChild(brand);
+
+    footer.appendChild(footerHints);
+    footer.appendChild(footerRight);
 
     // Batch action bar (hidden by default)
     this.batchBar = document.createElement('div');
@@ -133,6 +156,9 @@ export class Palette {
     if (this.isOpen) return;
     this.isOpen = true;
 
+    // Apply theme setting
+    this.applyTheme();
+
     this.host.style.display = 'block';
     this.input.value = '';
     this.selectedIndex = 0;
@@ -170,6 +196,18 @@ export class Palette {
 
   // ─── Search & Results ────────────────────────────────────
 
+  private applyTheme(): void {
+    chrome.storage.local.get('settings', (data: Record<string, unknown>) => {
+      const settings = data?.settings as { theme?: string } | undefined;
+      const theme = settings?.theme || 'auto';
+      if (theme === 'auto') {
+        this.host.removeAttribute('data-theme');
+      } else {
+        this.host.setAttribute('data-theme', theme);
+      }
+    });
+  }
+
   private onInput(): void {
     if (this.searchDebounceTimer !== null) {
       clearTimeout(this.searchDebounceTimer);
@@ -192,10 +230,21 @@ export class Palette {
   private renderResults(): void {
     this.resultsList.innerHTML = '';
 
+    // Update result count in footer
+    this.resultCount.textContent = this.results.length > 0
+      ? `${this.results.length} result${this.results.length !== 1 ? 's' : ''}`
+      : '';
+
     if (this.results.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'hatch-empty';
-      empty.textContent = 'No results found';
+      empty.innerHTML = `
+        <div class="hatch-empty-icon">⌘</div>
+        <div class="hatch-empty-title">No results found</div>
+        <div class="hatch-empty-hints">
+          Try <kbd>@</kbd> tabs · <kbd>#</kbd> bookmarks · <kbd>/</kbd> history · <kbd>;</kbd> snippets · <kbd>></kbd> commands
+        </div>
+      `;
       this.resultsList.appendChild(empty);
       return;
     }
@@ -305,6 +354,7 @@ export class Palette {
 
   private getCategoryLabel(category: string): string {
     const labels: Record<string, string> = {
+      recent: 'Recently Used',
       tab: 'Tabs',
       navigation: 'Navigation',
       bookmark: 'Bookmarks',
@@ -341,7 +391,7 @@ export class Palette {
       if (i === this.selectedIndex) {
         el.classList.add('selected');
         el.setAttribute('aria-selected', 'true');
-        el.scrollIntoView({ block: 'nearest' });
+        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       } else {
         el.classList.remove('selected');
         el.setAttribute('aria-selected', 'false');
@@ -372,7 +422,11 @@ export class Palette {
 
       case 'Escape':
         e.preventDefault();
-        this.close();
+        if (this.editorMode) {
+          this.exitEditor();
+        } else {
+          this.close();
+        }
         break;
 
       case 'Tab':
@@ -485,6 +539,241 @@ export class Palette {
     this.close();
   }
 
+  // ─── Editor Sub-View ────────────────────────────────────
+
+  private showEditor(type: EditorType): void {
+    this.editorMode = type;
+
+    // Hide search UI
+    this.inputWrapper.style.display = 'none';
+    this.resultsList.innerHTML = '';
+    this.resultCount.textContent = '';
+    if (this.batchBar) this.batchBar.style.display = 'none';
+
+    // Build editor form
+    const editor = document.createElement('div');
+    editor.className = 'hatch-editor';
+
+    const config = this.getEditorConfig(type);
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'hatch-editor-header';
+    header.innerHTML = `
+      <span class="hatch-editor-icon">${config.icon}</span>
+      <span class="hatch-editor-title">${config.title}</span>
+    `;
+
+    const backBtn = document.createElement('button');
+    backBtn.className = 'hatch-editor-back';
+    backBtn.textContent = '← Back';
+    backBtn.addEventListener('click', () => this.exitEditor());
+    header.appendChild(backBtn);
+
+    editor.appendChild(header);
+
+    // Fields
+    const fields: Record<string, HTMLInputElement | HTMLTextAreaElement> = {};
+
+    for (const field of config.fields) {
+      const group = document.createElement('div');
+      group.className = 'hatch-editor-field';
+
+      const label = document.createElement('label');
+      label.className = 'hatch-editor-label';
+      label.textContent = field.label;
+      group.appendChild(label);
+
+      if (field.hint) {
+        const hint = document.createElement('span');
+        hint.className = 'hatch-editor-hint';
+        hint.textContent = field.hint;
+        label.appendChild(hint);
+      }
+
+      if (field.multiline) {
+        const textarea = document.createElement('textarea');
+        textarea.className = 'hatch-editor-textarea';
+        textarea.placeholder = field.placeholder;
+        textarea.rows = 4;
+        group.appendChild(textarea);
+        fields[field.key] = textarea;
+      } else {
+        const input = document.createElement('input');
+        input.className = 'hatch-editor-input';
+        input.type = 'text';
+        input.placeholder = field.placeholder;
+        group.appendChild(input);
+        fields[field.key] = input;
+      }
+
+      editor.appendChild(group);
+    }
+
+    // Variable hints for snippets
+    if (type === 'snippet') {
+      const varHint = document.createElement('div');
+      varHint.className = 'hatch-editor-vars';
+      varHint.innerHTML = 'Variables: <code>{{date}}</code> <code>{{time}}</code> <code>{{url}}</code> <code>{{title}}</code> <code>{{domain}}</code> <code>{{year}}</code> <code>{{iso}}</code>';
+      editor.appendChild(varHint);
+    }
+
+    // Buttons
+    const actions = document.createElement('div');
+    actions.className = 'hatch-editor-actions';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'hatch-editor-save';
+    saveBtn.textContent = 'Save';
+    saveBtn.addEventListener('click', () => {
+      this.saveEditorData(type, fields);
+    });
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'hatch-editor-cancel';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.addEventListener('click', () => this.exitEditor());
+
+    actions.appendChild(cancelBtn);
+    actions.appendChild(saveBtn);
+    editor.appendChild(actions);
+
+    this.resultsList.appendChild(editor);
+
+    // Focus first field
+    const firstField = config.fields[0];
+    if (firstField) {
+      requestAnimationFrame(() => fields[firstField.key]?.focus());
+    }
+
+    // Update footer
+    this.footer.querySelector('.hatch-footer-hints')!.innerHTML = `
+      <span class="hatch-hint"><kbd>Esc</kbd> cancel</span>
+      <span class="hatch-hint"><kbd>Tab</kbd> next field</span>
+    `;
+  }
+
+  private exitEditor(): void {
+    this.editorMode = null;
+
+    // Restore search UI
+    this.inputWrapper.style.display = 'flex';
+    this.input.value = '';
+
+    // Restore footer hints
+    this.footer.querySelector('.hatch-footer-hints')!.innerHTML = `
+      <span class="hatch-hint"><kbd>↑↓</kbd> navigate</span>
+      <span class="hatch-hint"><kbd>↵</kbd> open</span>
+      <span class="hatch-hint"><kbd>⌘↵</kbd> new tab</span>
+      <span class="hatch-hint"><kbd>esc</kbd> close</span>
+    `;
+
+    requestAnimationFrame(() => this.input.focus());
+    this.updateResults();
+  }
+
+  private getEditorConfig(type: EditorType): {
+    title: string;
+    icon: string;
+    fields: Array<{ key: string; label: string; placeholder: string; hint?: string; multiline?: boolean }>;
+  } {
+    switch (type) {
+      case 'snippet':
+        return {
+          title: 'Create Snippet',
+          icon: '✂',
+          fields: [
+            { key: 'trigger', label: 'Trigger', placeholder: ';sig', hint: 'Start with ; recommended' },
+            { key: 'name', label: 'Name', placeholder: 'Email Signature' },
+            { key: 'body', label: 'Body', placeholder: 'Best regards,\nSounak Das', multiline: true },
+          ],
+        };
+      case 'alias':
+        return {
+          title: 'Create Alias',
+          icon: '🔗',
+          fields: [
+            { key: 'keyword', label: 'Keyword', placeholder: 'mail' },
+            { key: 'url', label: 'URL', placeholder: 'https://mail.google.com', hint: 'Use %s for parameters' },
+          ],
+        };
+      case 'engine':
+        return {
+          title: 'Add Search Engine',
+          icon: '🔎',
+          fields: [
+            { key: 'keyword', label: 'Keyword', placeholder: 'jira' },
+            { key: 'name', label: 'Name', placeholder: 'Jira' },
+            { key: 'urlTemplate', label: 'URL Template', placeholder: 'https://jira.com/search?q=%s', hint: '%s = search query' },
+          ],
+        };
+    }
+  }
+
+  private async saveEditorData(type: EditorType, fields: Record<string, HTMLInputElement | HTMLTextAreaElement>): Promise<void> {
+    const vals: Record<string, string> = {};
+    for (const [key, el] of Object.entries(fields)) {
+      vals[key] = el.value.trim();
+      if (!vals[key]) {
+        el.focus();
+        el.classList.add('hatch-editor-error');
+        setTimeout(() => el.classList.remove('hatch-editor-error'), 1000);
+        return;
+      }
+    }
+
+    switch (type) {
+      case 'snippet': {
+        const snippet = {
+          id: `snip-${Date.now()}`,
+          trigger: vals.trigger.startsWith(';') ? vals.trigger : `;${vals.trigger}`,
+          name: vals.name,
+          body: vals.body,
+        };
+        await sendMessage({ type: 'SAVE_SNIPPET', snippet });
+        break;
+      }
+      case 'alias': {
+        // Load existing, add new
+        const aliases = await new Promise<Array<{ keyword: string; url: string }>>((resolve) => {
+          chrome.storage.local.get('aliases', (data) => {
+            resolve((data.aliases || []) as Array<{ keyword: string; url: string }>);
+          });
+        });
+        const filtered = aliases.filter((a) => a.keyword !== vals.keyword);
+        filtered.push({ keyword: vals.keyword, url: vals.url });
+        await new Promise<void>((resolve) => {
+          chrome.storage.local.set({ aliases: filtered }, resolve);
+        });
+        break;
+      }
+      case 'engine': {
+        if (!vals.urlTemplate.includes('%s')) {
+          const el = fields.urlTemplate;
+          el.focus();
+          el.classList.add('hatch-editor-error');
+          setTimeout(() => el.classList.remove('hatch-editor-error'), 1000);
+          return;
+        }
+        const engines = await new Promise<Array<Record<string, unknown>>>((resolve) => {
+          chrome.storage.local.get('customSearchEngines', (data) => {
+            resolve((data.customSearchEngines || []) as Array<Record<string, unknown>>);
+          });
+        });
+        const filtered = engines.filter((e) => e.keyword !== vals.keyword);
+        filtered.push({ keyword: vals.keyword, name: vals.name, urlTemplate: vals.urlTemplate, icon: '🔎', custom: true });
+        await new Promise<void>((resolve) => {
+          chrome.storage.local.set({ customSearchEngines: filtered }, resolve);
+        });
+        break;
+      }
+    }
+
+    this.exitEditor();
+  }
+
+  // ─── Execute ───────────────────────────────────────────
+
   private executeSelected(metaKey: boolean = false): void {
     const result = this.results[this.selectedIndex];
     if (!result) return;
@@ -493,6 +782,7 @@ export class Palette {
       query: this.input.value,
       metaKey,
       close: () => this.close(),
+      showEditor: (type: EditorType) => this.showEditor(type),
     };
 
     try {

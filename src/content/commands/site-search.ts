@@ -8,6 +8,7 @@ export interface SiteSearchEngine {
   name: string;
   urlTemplate: string;  // %s replaced with query
   icon: string;
+  custom?: boolean;
 }
 
 const BUILT_IN_ENGINES: SiteSearchEngine[] = [
@@ -31,13 +32,71 @@ const BUILT_IN_ENGINES: SiteSearchEngine[] = [
   { keyword: 'imdb',  name: 'IMDb',              urlTemplate: 'https://www.imdb.com/find/?q=%s',                          icon: '🎬' },
 ];
 
+// ─── Custom Engine Storage ───────────────────────────────────
+
+let cachedEngines: SiteSearchEngine[] | null = null;
+
+async function getAllEngines(): Promise<SiteSearchEngine[]> {
+  if (cachedEngines) return cachedEngines;
+
+  return new Promise((resolve) => {
+    chrome.storage.local.get('customSearchEngines', (data: Record<string, unknown>) => {
+      const custom = (data?.customSearchEngines as SiteSearchEngine[]) || [];
+      // Custom engines override built-in ones with the same keyword
+      const customKeywords = new Set(custom.map((e) => e.keyword));
+      const merged = [
+        ...custom.map((e) => ({ ...e, custom: true })),
+        ...BUILT_IN_ENGINES.filter((e) => !customKeywords.has(e.keyword)),
+      ];
+      cachedEngines = merged;
+      // Invalidate cache after 5 seconds so new engines are picked up
+      setTimeout(() => { cachedEngines = null; }, 5000);
+      resolve(merged);
+    });
+  });
+}
+
+// ─── Create Custom Engine Command ────────────────────────────
+
+/**
+ * Detects `/engine keyword name url_template` and returns a command to save it.
+ * Example: /engine jira Jira https://company.atlassian.net/browse?q=%s
+ */
+export function getCreateEngineCommand(query: string): HatchCommand | null {
+  const match = query.match(/^\/engine\s+(\S+)\s+(\S+)\s+(\S+.*)$/i);
+  if (!match) return null;
+
+  const [, keyword, name, urlTemplate] = match;
+  if (!urlTemplate.includes('%s')) return null;
+
+  return {
+    id: 'create-engine',
+    name: `Add search engine: ${keyword} → ${name}`,
+    description: `URL: ${urlTemplate}`,
+    keywords: ['engine', 'search', 'add', 'custom'],
+    icon: '🔧',
+    category: 'command',
+    action: (ctx: CommandContext) => {
+      chrome.storage.local.get('customSearchEngines', (data: Record<string, unknown>) => {
+        const engines = (data?.customSearchEngines as SiteSearchEngine[]) || [];
+        // Remove existing with same keyword
+        const filtered = engines.filter((e) => e.keyword !== keyword);
+        filtered.push({ keyword, name, urlTemplate, icon: '🔎', custom: true });
+        chrome.storage.local.set({ customSearchEngines: filtered });
+        cachedEngines = null; // invalidate cache
+      });
+      ctx.close();
+    },
+  };
+}
+
 // ─── Site Search Detection ───────────────────────────────────
 
 /**
  * Check if the query matches a site search pattern (e.g., "gh react").
  * Returns a command if matched, null otherwise.
  */
-export function getSiteSearchCommand(query: string): HatchCommand | null {
+export async function getSiteSearchCommand(query: string): Promise<HatchCommand | null> {
   const spaceIdx = query.indexOf(' ');
   if (spaceIdx === -1) return null;
 
@@ -45,7 +104,8 @@ export function getSiteSearchCommand(query: string): HatchCommand | null {
   const searchQuery = query.slice(spaceIdx + 1).trim();
   if (!searchQuery) return null;
 
-  const engine = BUILT_IN_ENGINES.find((e) => e.keyword === keyword);
+  const engines = await getAllEngines();
+  const engine = engines.find((e) => e.keyword === keyword);
   if (!engine) return null;
 
   const url = engine.urlTemplate.replace('%s', encodeURIComponent(searchQuery));
@@ -69,29 +129,42 @@ export function getSiteSearchCommand(query: string): HatchCommand | null {
 }
 
 /**
- * When user types just a keyword (no space yet), show hint commands
- * for available site search engines.
+ * When user types just a keyword (no space yet), show hint commands.
  */
-export function getSiteSearchHints(query: string): HatchCommand[] {
+export async function getSiteSearchHints(query: string): Promise<HatchCommand[]> {
   if (!query || query.includes(' ')) return [];
 
   const q = query.toLowerCase();
-  return BUILT_IN_ENGINES
+  const engines = await getAllEngines();
+  return engines
     .filter((e) => e.keyword.startsWith(q) || e.name.toLowerCase().startsWith(q))
     .slice(0, 3)
     .map((engine) => ({
       id: `site-hint-${engine.keyword}`,
       name: `${engine.keyword}: Search ${engine.name}`,
-      description: `Type "${engine.keyword} <query>" to search`,
+      description: `Type "${engine.keyword} <query>" to search${engine.custom ? ' (custom)' : ''}`,
       keywords: [engine.keyword, engine.name],
       icon: engine.icon,
       category: 'search' as const,
       action: (ctx: CommandContext) => {
-        // Don't execute — this is just a hint. But if they press enter,
-        // put the keyword + space into the input for them.
-        // We can't modify input from here, so just open the site
         sendMessage({ type: 'CREATE_TAB', url: engine.urlTemplate.replace('%s', '') });
         ctx.close();
       },
     }));
 }
+
+// ─── Static Search Engine Commands ───────────────────────────
+
+export const staticSearchEngineCommands: HatchCommand[] = [
+  {
+    id: 'add-search-engine',
+    name: 'Add Search Engine',
+    description: 'Open the search engine editor',
+    keywords: ['add', 'create', 'search', 'engine', 'site'],
+    icon: '➕',
+    category: 'command',
+    action: (ctx: CommandContext) => {
+      ctx.showEditor('engine');
+    },
+  },
+];

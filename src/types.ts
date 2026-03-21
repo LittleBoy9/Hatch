@@ -14,7 +14,9 @@ export interface HatchCommand {
   prefix?: string;
 }
 
-export type CommandCategory = 'tab' | 'navigation' | 'bookmark' | 'history' | 'snippet' | 'command' | 'search' | 'session' | 'note' | 'alias' | 'clipboard';
+export type CommandCategory = 'tab' | 'navigation' | 'bookmark' | 'history' | 'snippet' | 'command' | 'search' | 'session' | 'note' | 'alias' | 'clipboard' | 'recent';
+
+export type EditorType = 'snippet' | 'alias' | 'engine';
 
 export interface CommandContext {
   /** The current query text */
@@ -23,6 +25,8 @@ export interface CommandContext {
   metaKey: boolean;
   /** Close the palette */
   close: () => void;
+  /** Switch palette to an editor form view */
+  showEditor: (type: EditorType) => void;
 }
 
 export interface TabInfo {

@@ -64,11 +64,11 @@ hatch/
 │   ├── storage/
 │   │   └── frecency.ts             # Frecency scoring engine
 │   ├── popup/
-│   │   ├── popup.html
-│   │   └── popup.ts
+│   │   ├── popup.html               # Extension popup (quick stats, links)
+│   │   └── popup.ts                 # Loads stats from chrome.storage
 │   └── options/
-│       ├── options.html             # Full options page
-│       └── options.ts               # Alias editor, snippet manager, site search config
+│       ├── options.html             # Full options page (CRUD for all data)
+│       └── options.ts               # Snippet editor, alias manager, engine config, import/export
 ├── public/
 │   └── icons/
 ├── package.json
@@ -172,6 +172,19 @@ hatch/
 - [x] **Workflow chains**: Clean Up, Focus Mode, Share Session, Research Mode, Save All Tabs, Morning Routine
 - [x] **Per-site commands**: GitHub (PRs, issues, notifications, new repo), YouTube (subscriptions, watch later, history), Google (Gmail, Drive, Calendar), Reddit (saved posts)
 - [x] **Import/export**: aliases, snippets, notes as JSON (copy to clipboard / import from clipboard)
+
+### Phase 8 — Polish & Settings UI ✅ SHIPPED
+- [x] **Category headers** in results list — "TABS", "BOOKMARKS", "NAVIGATION" section dividers
+- [x] **Favicon icons** for tabs and bookmarks (real site favicons, Google fallback)
+- [x] **Result count badge** in footer ("42 results")
+- [x] **Smooth scroll-into-view** — keyboard navigation scrolls smoothly
+- [x] **Better empty state** — shows prefix hints (`@` tabs, `#` bookmarks, etc.) when no results
+- [x] **Recently Used section** — top 5 frecency-scored commands shown first in default view
+- [x] **Theming system** — Dark / Light / System Auto, switchable via `Theme: Dark` command
+- [x] **Custom search engines** — `/engine keyword name url_template` to add user-defined engines
+- [x] **Options page** — full settings UI with snippet editor, alias manager, search engine config, notes viewer, import/export, frecency stats
+- [x] **Open Hatch Settings** command — opens options page from the palette
+- [x] **Stats dashboard** — snippet count, alias count, search engines, notes, tracked commands
 
 ---
 

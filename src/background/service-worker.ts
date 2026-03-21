@@ -279,6 +279,11 @@ async function handleMessage(msg: MessageType): Promise<unknown> {
     case 'GET_FRECENCY':
       return getFrecency();
 
+    // ─── Options ───────────────────────────────────────
+    case 'OPEN_OPTIONS':
+      chrome.runtime.openOptionsPage();
+      return;
+
     default:
       return null;
   }

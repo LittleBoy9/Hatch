@@ -37,10 +37,10 @@ export const paletteCSS = `
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ─── Light theme ─────────────────────────────────────────── */
+/* ─── Light theme (auto via media query) ─────────────────── */
 
 @media (prefers-color-scheme: light) {
-  :host {
+  :host(:not([data-theme="dark"])) {
     --hatch-bg: #ffffff;
     --hatch-bg-secondary: #f8fafc;
     --hatch-bg-hover: #f1f5f9;
@@ -56,6 +56,25 @@ export const paletteCSS = `
                     0 0 0 1px rgba(0, 0, 0, 0.05),
                     0 0 80px -20px rgba(99, 102, 241, 0.1);
   }
+}
+
+/* ─── Forced light theme ─────────────────────────────────── */
+
+:host([data-theme="light"]) {
+  --hatch-bg: #ffffff;
+  --hatch-bg-secondary: #f8fafc;
+  --hatch-bg-hover: #f1f5f9;
+  --hatch-bg-selected: #6366f1;
+  --hatch-border: rgba(0, 0, 0, 0.08);
+  --hatch-border-focus: rgba(99, 102, 241, 0.5);
+  --hatch-text: #0f172a;
+  --hatch-text-secondary: #475569;
+  --hatch-text-muted: #94a3b8;
+  --hatch-accent: #6366f1;
+  --hatch-accent-glow: rgba(99, 102, 241, 0.1);
+  --hatch-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15),
+                  0 0 0 1px rgba(0, 0, 0, 0.05),
+                  0 0 80px -20px rgba(99, 102, 241, 0.1);
 }
 
 /* ─── Backdrop ────────────────────────────────────────────── */
@@ -306,9 +325,39 @@ export const paletteCSS = `
 
 .hatch-empty {
   text-align: center;
-  padding: 40px 20px;
+  padding: 48px 20px 40px;
   color: var(--hatch-text-muted);
   font-size: 14px;
+}
+
+.hatch-empty-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+  opacity: 0.4;
+}
+
+.hatch-empty-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--hatch-text-secondary);
+  margin-bottom: 8px;
+}
+
+.hatch-empty-hints {
+  font-size: 12px;
+  color: var(--hatch-text-muted);
+  line-height: 1.8;
+}
+
+.hatch-empty-hints kbd {
+  font-family: var(--hatch-font);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--hatch-text-secondary);
+  background: var(--hatch-bg-secondary);
+  border: 1px solid var(--hatch-border);
+  border-radius: 4px;
+  padding: 1px 5px;
 }
 
 /* ─── Footer ─────────────────────────────────────────────── */
@@ -346,6 +395,18 @@ export const paletteCSS = `
   padding: 1px 5px;
   min-width: 20px;
   text-align: center;
+}
+
+.hatch-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hatch-result-count {
+  font-size: 11px;
+  color: var(--hatch-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .hatch-brand {
@@ -435,5 +496,176 @@ export const paletteCSS = `
 
 .hatch-batch-btn:hover {
   background: rgba(255, 255, 255, 0.35);
+}
+
+/* ─── Editor Sub-View ────────────────────────────────────── */
+
+.hatch-editor {
+  padding: 20px;
+}
+
+.hatch-editor-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.hatch-editor-icon {
+  font-size: 20px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--hatch-accent-glow);
+  border-radius: var(--hatch-radius-sm);
+}
+
+.hatch-editor-title {
+  font-size: 16px;
+  font-weight: 600;
+  flex: 1;
+}
+
+.hatch-editor-back {
+  background: transparent;
+  color: var(--hatch-text-muted);
+  border: 1px solid var(--hatch-border);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--hatch-font);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.hatch-editor-back:hover {
+  color: var(--hatch-text);
+  border-color: var(--hatch-text-muted);
+}
+
+.hatch-editor-field {
+  margin-bottom: 14px;
+}
+
+.hatch-editor-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--hatch-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.hatch-editor-hint {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--hatch-text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.hatch-editor-input,
+.hatch-editor-textarea {
+  width: 100%;
+  background: var(--hatch-bg-secondary);
+  border: 1px solid var(--hatch-border);
+  border-radius: var(--hatch-radius-sm);
+  color: var(--hatch-text);
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: var(--hatch-font);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
+}
+
+.hatch-editor-input:focus,
+.hatch-editor-textarea:focus {
+  border-color: var(--hatch-accent);
+  box-shadow: 0 0 0 3px var(--hatch-accent-glow);
+}
+
+.hatch-editor-textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: monospace, var(--hatch-font);
+  line-height: 1.5;
+}
+
+.hatch-editor-error {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+  animation: hatch-shake 0.3s ease;
+}
+
+@keyframes hatch-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.hatch-editor-vars {
+  font-size: 12px;
+  color: var(--hatch-text-muted);
+  margin-bottom: 16px;
+  line-height: 1.8;
+}
+
+.hatch-editor-vars code {
+  font-family: monospace;
+  font-size: 11px;
+  background: var(--hatch-bg-secondary);
+  border: 1px solid var(--hatch-border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: var(--hatch-text-secondary);
+}
+
+.hatch-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.hatch-editor-save {
+  background: var(--hatch-accent);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--hatch-radius-sm);
+  padding: 8px 24px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--hatch-font);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.hatch-editor-save:hover {
+  background: #818cf8;
+}
+
+.hatch-editor-cancel {
+  background: transparent;
+  color: var(--hatch-text-muted);
+  border: 1px solid var(--hatch-border);
+  border-radius: var(--hatch-radius-sm);
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--hatch-font);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.hatch-editor-cancel:hover {
+  color: var(--hatch-text);
+  border-color: var(--hatch-text-muted);
 }
 `;

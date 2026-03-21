@@ -39,6 +39,7 @@
       "description": "Open Hatch command palette"
     }
   },
+  "options_page": "options.html",
   "action": {
     "default_title": "Open Hatch (Cmd+Shift+K)",
     "default_icon": {

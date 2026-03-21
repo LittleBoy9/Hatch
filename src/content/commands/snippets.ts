@@ -65,27 +65,12 @@ export const staticSnippetCommands: HatchCommand[] = [
   {
     id: 'create-snippet',
     name: 'Create Snippet',
-    description: 'Save a text snippet with a trigger keyword',
+    description: 'Open the snippet editor',
     keywords: ['create', 'new', 'snippet', 'add'],
     icon: '➕',
     category: 'snippet',
-    action: async (ctx: CommandContext) => {
-      // Parse: "trigger | name | body" or just use query as body
-      const parts = ctx.query
-        .replace(/^[>;]\s*create\s*snippet\s*/i, '')
-        .split('|')
-        .map((s) => s.trim());
-
-      if (parts.length >= 3) {
-        const snippet: Snippet = {
-          id: `snip-${Date.now()}`,
-          trigger: parts[0].startsWith(';') ? parts[0] : `;${parts[0]}`,
-          name: parts[1],
-          body: parts[2],
-        };
-        await sendMessage({ type: 'SAVE_SNIPPET', snippet });
-      }
-      ctx.close();
+    action: (ctx: CommandContext) => {
+      ctx.showEditor('snippet');
     },
   },
 ];

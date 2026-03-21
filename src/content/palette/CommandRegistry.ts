@@ -1,11 +1,11 @@
 import type { HatchCommand } from '../../types';
 import { getTabCommands, staticTabCommands } from '../commands/tabs';
-import { staticNavigationCommands, getSearchFallbackCommand, getUrlCommand } from '../commands/navigation';
+import { staticNavigationCommands, themeCommands, settingsCommands, getSearchFallbackCommand, getUrlCommand } from '../commands/navigation';
 import { getBookmarkCommands } from '../commands/bookmarks';
 import { getHistoryCommands } from '../commands/history';
 import { getRecentlyClosedCommands } from '../commands/sessions';
 import { getTabGroupCommands, staticTabGroupCommands } from '../commands/tab-groups';
-import { getSiteSearchCommand, getSiteSearchHints } from '../commands/site-search';
+import { getSiteSearchCommand, getSiteSearchHints, getCreateEngineCommand, staticSearchEngineCommands } from '../commands/site-search';
 import { pageActionCommands } from '../commands/page-actions';
 import { devToolCommands } from '../commands/dev-tools';
 import { tabSuspendCommands } from '../commands/tab-suspend';
@@ -39,6 +39,9 @@ export class CommandRegistry {
       ...staticTabGroupCommands,
       ...tabSuspendCommands,
       ...staticNavigationCommands,
+      ...themeCommands,
+      ...settingsCommands,
+      ...staticSearchEngineCommands,
       ...pageActionCommands,
       ...devToolCommands,
       ...staticSnippetCommands,
@@ -72,6 +75,12 @@ export class CommandRegistry {
       return [{ item: noteCmd, score: 2, matches: [] }];
     }
 
+    // /engine <keyword> <name> <url> → add custom search engine
+    const engineCmd = getCreateEngineCommand(query);
+    if (engineCmd) {
+      return [{ item: engineCmd, score: 2, matches: [] }];
+    }
+
     // /alias <keyword> <url> → create an alias
     const aliasCmd = getCreateAliasCommand(query);
     if (aliasCmd) {
@@ -103,7 +112,7 @@ export class CommandRegistry {
 
     // ─── Site Search (e.g., "gh react") ────────────────
     if (!categoryFilter && query.length > 0) {
-      const siteCmd = getSiteSearchCommand(query);
+      const siteCmd = await getSiteSearchCommand(query);
       if (siteCmd) {
         const allCommands = await this.getAllCommands();
         let results = fuzzySearch(allCommands, query, maxResults > 0 ? maxResults - 1 : 0);
@@ -135,10 +144,15 @@ export class CommandRegistry {
     // Apply frecency boost
     results = await this.applyFrecencyBoost(results);
 
+    // When no query and no prefix, prepend "Recently Used" section
+    if (!query && !categoryFilter) {
+      results = await this.prependRecentlyUsed(results);
+    }
+
     // If we have a query, add contextual commands
     if (query.length > 0 && !categoryFilter) {
       // Site search hints (e.g., typing "gh" shows "gh: Search GitHub")
-      const hints = getSiteSearchHints(query);
+      const hints = await getSiteSearchHints(query);
       if (hints.length > 0) {
         const hintResults: FuzzyResult[] = hints.map((h) => ({ item: h, score: 1.5, matches: [] }));
         results = cap([...hintResults, ...results]);
@@ -164,6 +178,43 @@ export class CommandRegistry {
 
   trackExecution(commandId: string): void {
     trackCommandUsage(commandId);
+  }
+
+  /**
+   * Pulls commands with frecency data to the top as a "Recently Used" section.
+   * Creates clones with category='recent' so the Palette renders a separate header.
+   */
+  private async prependRecentlyUsed(results: FuzzyResult[]): Promise<FuzzyResult[]> {
+    try {
+      const frecency = await getFrecencyData();
+      if (!frecency || Object.keys(frecency).length === 0) return results;
+
+      // Find results that have frecency data, sorted by score
+      const recentEntries = results
+        .filter((r) => frecency[r.item.id] && calculateFrecencyScore(frecency[r.item.id]) > 0)
+        .sort((a, b) => {
+          const aScore = calculateFrecencyScore(frecency[a.item.id]);
+          const bScore = calculateFrecencyScore(frecency[b.item.id]);
+          return bScore - aScore;
+        })
+        .slice(0, 5);
+
+      if (recentEntries.length === 0) return results;
+
+      // Create "recent" category clones at the top
+      const recentIds = new Set(recentEntries.map((r) => r.item.id));
+      const recentResults: FuzzyResult[] = recentEntries.map((r) => ({
+        ...r,
+        item: { ...r.item, category: 'recent' },
+      }));
+
+      // Keep originals in their normal category sections (skip dupes)
+      const remaining = results.filter((r) => !recentIds.has(r.item.id));
+
+      return [...recentResults, ...remaining];
+    } catch {
+      return results;
+    }
   }
 
   private async applyFrecencyBoost(results: FuzzyResult[]): Promise<FuzzyResult[]> {

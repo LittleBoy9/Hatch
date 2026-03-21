@@ -128,19 +128,25 @@ export function getCreateAliasCommand(query: string): HatchCommand | null {
 
 export const staticAliasCommands: HatchCommand[] = [
   {
+    id: 'create-alias',
+    name: 'Create Alias',
+    description: 'Open the alias editor',
+    keywords: ['create', 'new', 'alias', 'add', 'quicklink'],
+    icon: '➕',
+    category: 'alias',
+    action: (ctx: CommandContext) => {
+      ctx.showEditor('alias');
+    },
+  },
+  {
     id: 'list-aliases',
     name: 'Manage Aliases',
-    description: 'View and manage your custom aliases',
+    description: 'Open settings to manage aliases',
     keywords: ['alias', 'aliases', 'manage', 'list', 'quicklinks'],
     icon: '⚡',
     category: 'alias',
-    action: async (ctx: CommandContext) => {
-      // Copy all aliases to clipboard for now
-      const aliases = await sendMessage<Alias[]>({ type: 'GET_ALIASES' });
-      if (aliases && aliases.length > 0) {
-        const text = aliases.map((a) => `${a.keyword} → ${a.url} (${a.name})`).join('\n');
-        await navigator.clipboard.writeText(text);
-      }
+    action: (ctx: CommandContext) => {
+      chrome.runtime.sendMessage({ type: 'OPEN_OPTIONS' });
       ctx.close();
     },
   },

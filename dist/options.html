@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hatch Settings</title>
+  <style>
+    :root {
+      --bg: #0f0f1a;
+      --bg-card: #1a1a2e;
+      --bg-input: #16213e;
+      --border: rgba(255,255,255,0.08);
+      --text: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent: #6366f1;
+      --accent-hover: #818cf8;
+      --danger: #ef4444;
+      --radius: 12px;
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f8fafc;
+        --bg-card: #ffffff;
+        --bg-input: #f1f5f9;
+        --border: rgba(0,0,0,0.08);
+        --text: #0f172a;
+        --text-secondary: #475569;
+        --text-muted: #94a3b8;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 40px 24px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .header .brand {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent);
+      background: rgba(99,102,241,0.1);
+      border-radius: 6px;
+      padding: 2px 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .section h2 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section h2 .count {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+    .section p.desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    .empty-row {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 32px 12px;
+    }
+    input, select {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 8px 12px;
+      font-size: 13px;
+      font-family: var(--font);
+      outline: none;
+      width: 100%;
+    }
+    input:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(99,102,241,0.2);
+    }
+    .add-form {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .add-form input { flex: 1; }
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    button:hover { background: var(--accent-hover); }
+    button.btn-sm {
+      padding: 4px 10px;
+      font-size: 12px;
+      border-radius: 6px;
+    }
+    button.btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid var(--danger);
+    }
+    button.btn-danger:hover {
+      background: var(--danger);
+      color: #fff;
+    }
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .setting-row:last-child { border-bottom: none; }
+    .setting-label {
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .setting-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .setting-control { flex-shrink: 0; }
+    .setting-control select {
+      width: auto;
+      min-width: 140px;
+    }
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--accent);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+    }
+    .toast.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 4px;
+    }
+    .kbd {
+      display: inline-block;
+      font-family: var(--font);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+    }
+    textarea {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 8px 12px;
+      font-size: 13px;
+      font-family: monospace;
+      outline: none;
+      width: 100%;
+      resize: vertical;
+      min-height: 60px;
+    }
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(99,102,241,0.2);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Hatch</h1>
+      <span class="brand">Settings</span>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats" id="stats"></div>
+
+    <!-- Settings -->
+    <div class="section">
+      <h2>General</h2>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Theme</div>
+          <div class="setting-desc">Choose palette appearance</div>
+        </div>
+        <div class="setting-control">
+          <select id="theme-select">
+            <option value="auto">System Auto</option>
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+          </select>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Keyboard Shortcut</div>
+          <div class="setting-desc">Configured in Chrome settings</div>
+        </div>
+        <div class="setting-control">
+          <span class="kbd">Cmd+Shift+K</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Snippets -->
+    <div class="section">
+      <h2>Snippets <span class="count" id="snippet-count"></span></h2>
+      <p class="desc">Text snippets with trigger keywords. Use <span class="kbd">;</span> prefix in palette to filter. Variables: <code>{{date}}</code>, <code>{{time}}</code>, <code>{{url}}</code>, <code>{{title}}</code></p>
+      <table>
+        <thead>
+          <tr><th>Trigger</th><th>Name</th><th>Body</th><th></th></tr>
+        </thead>
+        <tbody id="snippet-list"></tbody>
+      </table>
+      <div class="add-form">
+        <input id="snippet-trigger" placeholder="Trigger (e.g., ;sig)">
+        <input id="snippet-name" placeholder="Name">
+        <input id="snippet-body" placeholder="Body text">
+        <button id="snippet-add">Add</button>
+      </div>
+    </div>
+
+    <!-- Aliases -->
+    <div class="section">
+      <h2>Aliases <span class="count" id="alias-count"></span></h2>
+      <p class="desc">Quick shortcuts. Use <code>%s</code> for parameterized links (e.g., <code>https://jira.com/browse/%s</code>)</p>
+      <table>
+        <thead>
+          <tr><th>Keyword</th><th>URL</th><th></th></tr>
+        </thead>
+        <tbody id="alias-list"></tbody>
+      </table>
+      <div class="add-form">
+        <input id="alias-keyword" placeholder="Keyword (e.g., mail)">
+        <input id="alias-url" placeholder="URL (e.g., https://mail.google.com)">
+        <button id="alias-add">Add</button>
+      </div>
+    </div>
+
+    <!-- Custom Search Engines -->
+    <div class="section">
+      <h2>Search Engines <span class="count" id="engine-count"></span></h2>
+      <p class="desc">Custom site search. 18 built-in + your custom ones. Use <code>%s</code> for the query placeholder.</p>
+      <table>
+        <thead>
+          <tr><th>Keyword</th><th>Name</th><th>URL Template</th><th></th></tr>
+        </thead>
+        <tbody id="engine-list"></tbody>
+      </table>
+      <div class="add-form">
+        <input id="engine-keyword" placeholder="Keyword (e.g., jira)">
+        <input id="engine-name" placeholder="Name (e.g., Jira)">
+        <input id="engine-url" placeholder="URL with %s (e.g., https://jira.com/search?q=%s)">
+        <button id="engine-add">Add</button>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="section">
+      <h2>Notes <span class="count" id="note-count"></span></h2>
+      <p class="desc">Quick notes saved via <code>/note text</code> in palette</p>
+      <table>
+        <thead>
+          <tr><th>Note</th><th>Page</th><th>Date</th><th></th></tr>
+        </thead>
+        <tbody id="note-list"></tbody>
+      </table>
+    </div>
+
+    <!-- Data -->
+    <div class="section">
+      <h2>Data</h2>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Export All Data</div>
+          <div class="setting-desc">Download snippets, aliases, engines, notes as JSON</div>
+        </div>
+        <div class="setting-control">
+          <button id="export-btn" class="btn-sm">Export</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Import Data</div>
+          <div class="setting-desc">Restore from a JSON export</div>
+        </div>
+        <div class="setting-control">
+          <button id="import-btn" class="btn-sm">Import</button>
+          <input type="file" id="import-file" accept=".json" style="display:none">
+        </div>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Clear Frecency Data</div>
+          <div class="setting-desc">Reset command usage statistics</div>
+        </div>
+        <div class="setting-control">
+          <button id="clear-frecency" class="btn-sm btn-danger">Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="options.js"></script>
+</body>
+</html>

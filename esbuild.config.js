@@ -33,12 +33,20 @@ function copyStaticFiles() {
   if (fs.existsSync(popupHtml)) {
     fs.copyFileSync(popupHtml, path.resolve(distDir, 'popup.html'));
   }
+
+  // Copy options.html
+  const optionsHtml = path.resolve(__dirname, 'src', 'options', 'options.html');
+  if (fs.existsSync(optionsHtml)) {
+    fs.copyFileSync(optionsHtml, path.resolve(distDir, 'options.html'));
+  }
 }
 
 const buildOptions = {
   entryPoints: [
     'src/background/service-worker.ts',
     'src/content/index.ts',
+    'src/options/options.ts',
+    'src/popup/popup.ts',
   ],
   bundle: true,
   outdir: 'dist',

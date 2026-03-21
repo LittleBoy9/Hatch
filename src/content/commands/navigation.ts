@@ -58,6 +58,73 @@ export function getUrlCommand(query: string): HatchCommand | null {
   };
 }
 
+// ─── Theme Commands ──────────────────────────────────────────
+
+function setTheme(theme: 'auto' | 'dark' | 'light'): void {
+  chrome.storage.local.get('settings', (data: Record<string, unknown>) => {
+    const settings = (data?.settings as Record<string, unknown>) || {};
+    chrome.storage.local.set({ settings: { ...settings, theme } });
+  });
+}
+
+export const themeCommands: HatchCommand[] = [
+  {
+    id: 'theme-auto',
+    name: 'Theme: System Auto',
+    description: 'Follow system dark/light preference',
+    keywords: ['theme', 'auto', 'system', 'appearance'],
+    icon: '🌗',
+    category: 'command',
+    action: (ctx) => {
+      setTheme('auto');
+      ctx.close();
+    },
+  },
+  {
+    id: 'theme-dark',
+    name: 'Theme: Dark',
+    description: 'Always use dark theme',
+    keywords: ['theme', 'dark', 'night', 'appearance'],
+    icon: '🌙',
+    category: 'command',
+    action: (ctx) => {
+      setTheme('dark');
+      ctx.close();
+    },
+  },
+  {
+    id: 'theme-light',
+    name: 'Theme: Light',
+    description: 'Always use light theme',
+    keywords: ['theme', 'light', 'day', 'appearance'],
+    icon: '☀',
+    category: 'command',
+    action: (ctx) => {
+      setTheme('light');
+      ctx.close();
+    },
+  },
+];
+
+// ─── Settings Command ────────────────────────────────────────
+
+export const settingsCommands: HatchCommand[] = [
+  {
+    id: 'open-settings',
+    name: 'Open Hatch Settings',
+    description: 'Manage snippets, aliases, search engines, and preferences',
+    keywords: ['settings', 'options', 'preferences', 'config'],
+    icon: '⚙',
+    category: 'command',
+    action: (ctx) => {
+      chrome.runtime.sendMessage({ type: 'OPEN_OPTIONS' });
+      ctx.close();
+    },
+  },
+];
+
+// ─── Static Navigation Commands ──────────────────────────────
+
 export const staticNavigationCommands: HatchCommand[] = [
   {
     id: 'reload-page',
