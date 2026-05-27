@@ -58,13 +58,10 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 let conflictHintShown = false;
 function showConflictHint(): void {
   if (conflictHintShown) return;
-  // Only show once per page load — check if user has seen it before
+  if (!chrome.runtime?.id) return; // Extension context invalidated
   chrome.storage.local.get('conflictHintDismissed', (data) => {
-    if (data.conflictHintDismissed) return;
+    if (chrome.runtime.lastError || data.conflictHintDismissed) return;
     conflictHintShown = true;
-
-    // The palette is already open, so we don't need a separate UI.
-    // Just save that the user knows Hatch overrides Cmd+K here.
     chrome.storage.local.set({ conflictHintDismissed: true });
   });
 }
@@ -73,16 +70,19 @@ function showConflictHint(): void {
 
 // Lazy init — only create the palette DOM when first needed
 // But set up message listener immediately for toolbar button clicks
-chrome.runtime.onMessage.addListener((msg) => {
-  if (msg.type === 'OPEN_PALETTE') {
-    if (!palette) init();
-    palette!.toggle();
-  }
-});
+if (chrome.runtime?.id) {
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type === 'OPEN_PALETTE') {
+      if (!palette) init();
+      palette!.toggle();
+    }
+  });
+}
 
 // ─── Onboarding Tooltip ─────────────────────────────────────
 
 function showOnboardingTooltip(): void {
+  if (!chrome.runtime?.id) return;
   chrome.storage.local.get('onboardingDone', (data) => {
     if (data.onboardingDone) return;
     chrome.storage.local.set({ onboardingDone: true });

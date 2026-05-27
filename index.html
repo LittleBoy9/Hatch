@@ -1,0 +1,1856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hatch — The Command Palette Your Browser Deserves</title>
+  <meta name="description" content="A universal Cmd+K command palette for Chrome. 80+ commands. Zero servers. Blazing fast.">
+  <link rel="icon" type="image/png" href="public/icons/icon-48.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    /* ─── Reset & Base ──────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #050510;
+      color: #e2e8f0;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      cursor: default;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    /* ─── Three.js Canvas ───────────────────────────────────────── */
+    #scene-container {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+    }
+    canvas { display: block; }
+
+    /* ─── Scroll Content Overlay ────────────────────────────────── */
+    .scroll-content {
+      position: relative;
+      z-index: 1;
+      pointer-events: none;
+    }
+    .scroll-content > * { pointer-events: auto; }
+
+    /* ─── Sections ──────────────────────────────────────────────── */
+    section {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 100px 40px;
+      position: relative;
+    }
+
+    /* ─── Nav ───────────────────────────────────────────────────── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 40px;
+      backdrop-filter: blur(20px);
+      background: rgba(5, 5, 16, 0.6);
+      border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+      transition: background 0.3s;
+    }
+    nav .logo {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #818cf8, #6366f1, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    nav .nav-links { display: flex; gap: 32px; align-items: center; }
+    nav .nav-links a {
+      font-size: 14px;
+      font-weight: 500;
+      color: #94a3b8;
+      transition: color 0.2s;
+    }
+    nav .nav-links a:hover { color: #e2e8f0; }
+    .nav-cta {
+      padding: 8px 20px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff !important;
+      font-weight: 600;
+      font-size: 13px;
+      transition: transform 0.2s, box-shadow 0.2s;
+      border: none;
+      cursor: pointer;
+    }
+    .nav-cta:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+    }
+
+    /* ─── Hero ──────────────────────────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      text-align: center;
+      padding-top: 140px;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      background: rgba(99, 102, 241, 0.08);
+      font-size: 13px;
+      color: #a5b4fc;
+      margin-bottom: 32px;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    .hero-badge .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 6px #22c55e;
+      animation: pulse-dot 2s infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .hero h1 {
+      font-size: clamp(48px, 7vw, 96px);
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+      max-width: 900px;
+      margin: 0 auto 24px;
+      opacity: 0;
+      transform: translateY(40px);
+    }
+    .hero h1 .gradient-text {
+      background: linear-gradient(135deg, #818cf8 0%, #6366f1 30%, #a78bfa 60%, #c084fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero .subtitle {
+      font-size: clamp(16px, 2vw, 20px);
+      color: #64748b;
+      max-width: 560px;
+      margin: 0 auto 48px;
+      line-height: 1.6;
+      font-weight: 400;
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    .btn-primary {
+      padding: 14px 32px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #6366f1, #7c3aed);
+      color: #fff;
+      font-weight: 700;
+      font-size: 16px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 30px rgba(99, 102, 241, 0.3);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 40px rgba(99, 102, 241, 0.5);
+    }
+    .btn-secondary {
+      padding: 14px 32px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #e2e8f0;
+      font-weight: 600;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(99, 102, 241, 0.3);
+      transform: translateY(-2px);
+    }
+    .hero-shortcut {
+      margin-top: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    .hero-shortcut span { color: #475569; font-size: 14px; }
+    kbd {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      color: #a5b4fc;
+    }
+
+    /* ─── Floating Palette Demo ─────────────────────────────────── */
+    .palette-3d-container {
+      margin-top: 80px;
+      perspective: 1200px;
+      opacity: 0;
+      transform: translateY(60px);
+    }
+    .palette-demo {
+      width: min(640px, 90vw);
+      background: rgba(15, 15, 35, 0.85);
+      backdrop-filter: blur(40px);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      border-radius: 16px;
+      box-shadow:
+        0 0 0 1px rgba(99, 102, 241, 0.1),
+        0 20px 60px rgba(0, 0, 0, 0.5),
+        0 0 100px rgba(99, 102, 241, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      overflow: hidden;
+      transform: rotateX(8deg) rotateY(-3deg);
+      transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+      transform-style: preserve-3d;
+    }
+    .palette-demo:hover {
+      transform: rotateX(2deg) rotateY(0deg) scale(1.02);
+    }
+    .palette-input-row {
+      display: flex;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      gap: 12px;
+    }
+    .palette-input-row .search-icon { color: #6366f1; font-size: 18px; flex-shrink: 0; }
+    .palette-typed-text {
+      flex: 1;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      color: #e2e8f0;
+      background: none;
+      border: none;
+      font-weight: 500;
+    }
+    .palette-cursor {
+      display: inline-block;
+      width: 2px;
+      height: 20px;
+      background: #6366f1;
+      animation: blink 1s step-end infinite;
+      vertical-align: middle;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+    .palette-esc {
+      font-size: 11px;
+      color: #475569;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      padding: 2px 6px;
+    }
+    .palette-results { padding: 8px; }
+    .palette-result {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .palette-result.active {
+      background: rgba(99, 102, 241, 0.12);
+      box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.15);
+    }
+    .palette-result .r-icon {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      background: rgba(99, 102, 241, 0.1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .palette-result .r-info { flex: 1; min-width: 0; }
+    .palette-result .r-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #e2e8f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .palette-result .r-name .hl { color: #818cf8; }
+    .palette-result .r-desc {
+      font-size: 12px;
+      color: #475569;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .palette-result .r-badge {
+      font-size: 10px;
+      color: #475569;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 4px;
+      padding: 2px 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      flex-shrink: 0;
+    }
+    .palette-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 11px;
+      color: #334155;
+    }
+    .palette-footer .hints { display: flex; gap: 16px; }
+    .palette-footer kbd {
+      font-size: 10px;
+      padding: 1px 5px;
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.06);
+      color: #475569;
+    }
+
+    /* ─── Stats Bar ─────────────────────────────────────────────── */
+    .stats-bar {
+      display: flex;
+      gap: 48px;
+      justify-content: center;
+      margin-top: 80px;
+      flex-wrap: wrap;
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    .stat-item { text-align: center; }
+    .stat-item .stat-number {
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      background: linear-gradient(135deg, #818cf8, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .stat-item .stat-label {
+      font-size: 13px;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 4px;
+    }
+
+    /* ─── Section Headers ───────────────────────────────────────── */
+    .section-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #6366f1;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: clamp(32px, 5vw, 56px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      text-align: center;
+      line-height: 1.1;
+      max-width: 700px;
+      margin-bottom: 20px;
+    }
+    .section-desc {
+      font-size: 17px;
+      color: #64748b;
+      text-align: center;
+      max-width: 520px;
+      line-height: 1.6;
+      margin-bottom: 60px;
+    }
+
+    /* ─── Feature Cards ─────────────────────────────────────────── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+      max-width: 1100px;
+      width: 100%;
+    }
+    .feature-card {
+      background: rgba(15, 15, 35, 0.6);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 16px;
+      padding: 32px;
+      transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+      transform-style: preserve-3d;
+      position: relative;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(40px);
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.3), transparent);
+      opacity: 0;
+      transition: opacity 0.4s;
+    }
+    .feature-card:hover {
+      border-color: rgba(99, 102, 241, 0.2);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 40px rgba(99, 102, 241, 0.05);
+    }
+    .feature-card:hover::before { opacity: 1; }
+    .feature-icon {
+      width: 48px; height: 48px;
+      border-radius: 12px;
+      background: rgba(99, 102, 241, 0.1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      margin-bottom: 20px;
+    }
+    .feature-card h3 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+    .feature-card p {
+      font-size: 14px;
+      color: #64748b;
+      line-height: 1.6;
+    }
+
+    /* ─── Search Engines ────────────────────────────────────────── */
+    .engines-orbit {
+      position: relative;
+      width: 500px;
+      height: 500px;
+      margin: 0 auto;
+    }
+    .engine-pill {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 999px;
+      background: rgba(15, 15, 35, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+      backdrop-filter: blur(10px);
+      opacity: 0;
+      transform: scale(0.8);
+      transition: all 0.3s;
+    }
+    .engine-pill:hover {
+      border-color: rgba(99, 102, 241, 0.4);
+      box-shadow: 0 0 30px rgba(99, 102, 241, 0.15);
+      transform: scale(1.08) !important;
+    }
+    .engine-pill .e-key {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #6366f1;
+      background: rgba(99, 102, 241, 0.15);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    /* ─── 3D Command Carousel ─────────────────────────────────────── */
+    #commands {
+      min-height: auto;
+      padding-top: 120px;
+      padding-bottom: 160px;
+      overflow: visible;
+    }
+
+    .carousel-wrapper {
+      width: 100%;
+      max-width: 1400px;
+      position: relative;
+      margin: 0 auto;
+    }
+
+    .carousel-scene {
+      width: 100%;
+      height: 700px;
+      perspective: 1800px;
+      perspective-origin: 50% 50%;
+      position: relative;
+      overflow: visible;
+      cursor: grab;
+      user-select: none;
+    }
+    .carousel-scene:active { cursor: grabbing; }
+
+    .carousel-ring {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+    }
+
+    .carousel-panel {
+      position: absolute;
+      width: 320px;
+      left: 50%;
+      top: 50%;
+      margin-left: -160px;
+      margin-top: -260px;
+      height: 520px;
+      backface-visibility: hidden;
+      transform-style: preserve-3d;
+    }
+
+    .panel-inner {
+      width: 100%;
+      height: 100%;
+      background: rgba(10, 10, 30, 0.75);
+      backdrop-filter: blur(30px);
+      border: 1px solid rgba(99, 102, 241, 0.12);
+      border-radius: 20px;
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      transition: border-color 0.4s, box-shadow 0.4s;
+    }
+    .panel-inner::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      border-radius: 20px 20px 0 0;
+      background: var(--panel-accent, linear-gradient(90deg, #6366f1, #a78bfa));
+      opacity: 0.8;
+    }
+    .panel-inner::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 20px;
+      background: radial-gradient(ellipse at 50% 0%, var(--panel-glow, rgba(99,102,241,0.06)) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .carousel-panel.active .panel-inner {
+      border-color: rgba(99, 102, 241, 0.35);
+      box-shadow:
+        0 0 60px rgba(99, 102, 241, 0.12),
+        0 30px 80px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+      flex-shrink: 0;
+    }
+    .panel-icon {
+      width: 48px; height: 48px;
+      border-radius: 14px;
+      background: var(--panel-icon-bg, rgba(99,102,241,0.12));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+    .panel-header-text h3 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #f1f5f9;
+    }
+    .panel-header-text .panel-count {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .panel-commands {
+      flex: 1;
+      overflow-y: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .panel-commands::-webkit-scrollbar { display: none; }
+
+    .pcmd {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      margin-bottom: 4px;
+      transition: background 0.2s, transform 0.2s;
+      cursor: default;
+    }
+    .pcmd:hover {
+      background: rgba(99, 102, 241, 0.08);
+      transform: translateX(4px);
+    }
+    .pcmd-icon {
+      font-size: 18px;
+      width: 32px; height: 32px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      flex-shrink: 0;
+    }
+    .pcmd-info { flex: 1; min-width: 0; }
+    .pcmd-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #e2e8f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pcmd-desc {
+      font-size: 11px;
+      color: #475569;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
+
+    /* Carousel navigation */
+    .carousel-nav {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 24px;
+      margin-top: 40px;
+    }
+    .carousel-btn {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      background: rgba(15, 15, 35, 0.6);
+      backdrop-filter: blur(10px);
+      color: #a5b4fc;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.3s;
+    }
+    .carousel-btn:hover {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: rgba(99, 102, 241, 0.5);
+      box-shadow: 0 0 30px rgba(99, 102, 241, 0.2);
+      transform: scale(1.08);
+    }
+    .carousel-dots {
+      display: flex;
+      gap: 8px;
+    }
+    .carousel-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: rgba(99, 102, 241, 0.2);
+      border: 1px solid rgba(99, 102, 241, 0.15);
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .carousel-dot.active {
+      background: #6366f1;
+      box-shadow: 0 0 12px rgba(99, 102, 241, 0.6);
+      transform: scale(1.2);
+    }
+    .carousel-category-label {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 14px;
+      color: #64748b;
+      font-weight: 500;
+      height: 20px;
+      transition: opacity 0.3s;
+    }
+
+    /* Instruction hint */
+    .carousel-hint {
+      text-align: center;
+      margin-top: 12px;
+      font-size: 12px;
+      color: #334155;
+      letter-spacing: 0.05em;
+    }
+
+    /* ─── CTA Section ───────────────────────────────────────────── */
+    .cta-section {
+      text-align: center;
+      position: relative;
+    }
+    .cta-glow {
+      position: absolute;
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .cta-section h2 {
+      font-size: clamp(36px, 5vw, 64px);
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      margin-bottom: 20px;
+    }
+    .cta-section p {
+      font-size: 18px;
+      color: #64748b;
+      margin-bottom: 40px;
+      max-width: 500px;
+    }
+
+    /* ─── Footer ────────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 40px;
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+      font-size: 13px;
+      color: #334155;
+    }
+    footer a { color: #6366f1; }
+
+    /* ─── Responsive ────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      nav { padding: 16px 20px; }
+      nav .nav-links a:not(.nav-cta) { display: none; }
+      section { padding: 80px 20px; }
+      .stats-bar { gap: 32px; }
+      .engines-orbit { width: 300px; height: 300px; }
+      .palette-demo { transform: rotateX(4deg) rotateY(0deg); }
+      .carousel-scene { height: 550px; perspective: 1200px; }
+      .carousel-panel { width: 280px; margin-left: -140px; height: 480px; margin-top: -240px; }
+    }
+
+    /* ─── Scroll reveal ─────────────────────────────────────────── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(40px);
+    }
+  </style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav id="main-nav">
+  <div class="logo">HATCH</div>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#commands">Commands</a>
+    <a href="#search">Search</a>
+    <a href="https://github.com/littleboy9/hatch" class="nav-cta">Get Hatch</a>
+  </div>
+</nav>
+
+<!-- Three.js Container -->
+<div id="scene-container"></div>
+
+<!-- Scroll Content -->
+<div class="scroll-content">
+
+  <!-- Hero -->
+  <section class="hero" id="hero">
+    <div class="hero-badge">
+      <span class="dot"></span>
+      v1.0 &mdash; Now Available
+    </div>
+
+    <h1>
+      Your browser's<br>
+      <span class="gradient-text">missing superpower.</span>
+    </h1>
+
+    <p class="subtitle">
+      A universal <kbd>Cmd+K</kbd> command palette for Chrome. Search tabs, bookmarks, history &mdash; control everything with your keyboard.
+    </p>
+
+    <div class="hero-actions">
+      <button class="btn-primary" onclick="window.open('https://github.com/littleboy9/hatch','_blank')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Install Extension
+      </button>
+      <button class="btn-secondary" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">
+        See what it does
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+    </div>
+
+    <div class="hero-shortcut">
+      <span>Press</span> <kbd>Cmd</kbd> <span>+</span> <kbd>K</kbd> <span>anywhere</span>
+    </div>
+
+    <!-- Floating Palette Demo -->
+    <div class="palette-3d-container">
+      <div class="palette-demo" id="palette-demo">
+        <div class="palette-input-row">
+          <span class="search-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+          <span class="palette-typed-text" id="typed-text"></span>
+          <span class="palette-cursor"></span>
+          <span class="palette-esc">ESC</span>
+        </div>
+        <div class="palette-results" id="palette-results"></div>
+        <div class="palette-footer">
+          <div class="hints">
+            <span><kbd>&uarr;&darr;</kbd> navigate</span>
+            <span><kbd>&crarr;</kbd> open</span>
+            <span><kbd>&#8984;&crarr;</kbd> new tab</span>
+          </div>
+          <span style="color:#475569;font-weight:600;letter-spacing:0.06em;">HATCH</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar">
+      <div class="stat-item">
+        <div class="stat-number" data-count="80">0+</div>
+        <div class="stat-label">Commands</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" data-count="18">0</div>
+        <div class="stat-label">Search Engines</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" data-count="10">0</div>
+        <div class="stat-label">Variables</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" data-count="0" data-text="29KB">0</div>
+        <div class="stat-label">Bundle Size</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features">
+    <span class="section-label reveal">Features</span>
+    <h2 class="section-title reveal">Everything you need,<br>nothing you don't.</h2>
+    <p class="section-desc reveal">No bloat. No accounts. No telemetry. Just raw speed and power, right in your browser.</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">&#9889;</div>
+        <h3>Instant Launch</h3>
+        <p>Opens in under 50ms. Fuzzy search results appear as you type. Zero startup cost thanks to lazy initialization.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#128269;</div>
+        <h3>Fuzzy Search Everything</h3>
+        <p>Powered by quickfuzz &mdash; 7x faster than Fuse.js. Search tabs, bookmarks, history, commands, and more with match highlighting.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#128736;</div>
+        <h3>Tab Power Tools</h3>
+        <p>Pin, mute, move, close, duplicate, suspend, group tabs. Multi-select with Space for batch operations.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#9993;</div>
+        <h3>Text Snippets</h3>
+        <p>Create reusable text snippets with dynamic variables. Type a trigger keyword to expand. Supports date, URL, title placeholders.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#128279;</div>
+        <h3>Aliases & Quicklinks</h3>
+        <p>Type "mail" to open Gmail. Type "jira PROJ-123" to jump to a ticket. Parameterized URLs with %s replacement.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#128373;</div>
+        <h3>Shadow DOM Isolation</h3>
+        <p>Rendered in a closed Shadow DOM. Page CSS can't touch it. Hatch CSS can't leak out. Works perfectly on every website.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#128202;</div>
+        <h3>Frecency Ranking</h3>
+        <p>Commands you use frequently and recently bubble to the top. Your workflow gets faster the more you use Hatch.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#127760;</div>
+        <h3>18 Search Engines</h3>
+        <p>Type "gh react" to search GitHub. "yt lofi" for YouTube. "mdn fetch" for MDN. Add your own custom engines.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#128274;</div>
+        <h3>100% Local</h3>
+        <p>No servers. No databases. No accounts. Everything stored in chrome.storage.local. Your data never leaves your machine.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Search Engines -->
+  <section id="search">
+    <span class="section-label reveal">Quick Search</span>
+    <h2 class="section-title reveal">Search the web<br>at the speed of thought.</h2>
+    <p class="section-desc reveal">Type a keyword and your query. Hatch takes you there instantly. No need to open a new tab and navigate.</p>
+
+    <div class="engines-orbit" id="engines-orbit"></div>
+  </section>
+
+  <!-- 3D Commands Showcase -->
+  <section id="commands">
+    <span class="section-label reveal">80+ Commands</span>
+    <h2 class="section-title reveal">Your browser,<br>fully keyboard-driven.</h2>
+    <p class="section-desc reveal">Drag to explore every command category. From tab management to developer tools &mdash; everything one keystroke away.</p>
+
+    <div class="carousel-wrapper">
+      <div class="carousel-scene" id="carousel-scene">
+        <div class="carousel-ring" id="carousel-ring">
+          <!-- Panels injected by JS -->
+        </div>
+      </div>
+      <div class="carousel-nav">
+        <button class="carousel-btn" id="carousel-prev">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div class="carousel-dots" id="carousel-dots"></div>
+        <button class="carousel-btn" id="carousel-next">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+      <div class="carousel-hint">Drag to rotate &middot; Click arrows to navigate &middot; Scroll to explore</div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section" id="cta">
+    <div class="cta-glow"></div>
+    <span class="section-label reveal">Get Started</span>
+    <h2 class="reveal">Ready to <span class="gradient-text" style="-webkit-text-fill-color:transparent;background:linear-gradient(135deg,#818cf8,#a78bfa,#c084fc);-webkit-background-clip:text;">hatch</span> something?</h2>
+    <p class="reveal">Install in under 30 seconds. No sign-up. No config. Just press <kbd>Cmd+K</kbd>.</p>
+    <div class="hero-actions reveal" style="opacity:1;transform:none;">
+      <button class="btn-primary" onclick="window.open('https://github.com/littleboy9/hatch','_blank')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+        View on GitHub
+      </button>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    Built by <a href="https://github.com/littleboy9" target="_blank">Sounak Das</a> &middot; Powered by <a href="https://www.npmjs.com/package/quickfuzz" target="_blank">quickfuzz</a> &middot; MIT License
+  </footer>
+
+</div>
+
+<!-- Scripts -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+// ═══════════════════════════════════════════════════════════════
+// THREE.JS SCENE
+// ═══════════════════════════════════════════════════════════════
+
+const container = document.getElementById('scene-container');
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x050510, 0.0008);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+camera.position.set(0, 0, 120);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+container.appendChild(renderer.domElement);
+
+// Post Processing (Bloom)
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  0.8, 0.4, 0.85
+);
+composer.addPass(bloom);
+
+// Lighting
+const ambientLight = new THREE.AmbientLight(0x334155, 0.5);
+scene.add(ambientLight);
+
+const pointLight1 = new THREE.PointLight(0x6366f1, 80, 400);
+pointLight1.position.set(50, 80, 60);
+scene.add(pointLight1);
+
+const pointLight2 = new THREE.PointLight(0x8b5cf6, 60, 400);
+pointLight2.position.set(-60, -40, 80);
+scene.add(pointLight2);
+
+const pointLight3 = new THREE.PointLight(0x06b6d4, 40, 300);
+pointLight3.position.set(0, -60, -40);
+scene.add(pointLight3);
+
+// Materials
+const glowMat = new THREE.MeshStandardMaterial({
+  color: 0x6366f1, emissive: 0x6366f1, emissiveIntensity: 0.4,
+  metalness: 0.9, roughness: 0.15, transparent: true, opacity: 0.7,
+});
+
+const glassMat = new THREE.MeshPhysicalMaterial({
+  color: 0x1e1b4b, metalness: 0.1, roughness: 0.05,
+  transmission: 0.9, thickness: 0.5, transparent: true, opacity: 0.3, ior: 1.5,
+});
+
+const wireMat = new THREE.MeshBasicMaterial({
+  color: 0x6366f1, wireframe: true, transparent: true, opacity: 0.08,
+});
+
+const edgeMat = new THREE.LineBasicMaterial({
+  color: 0x818cf8, transparent: true, opacity: 0.25,
+});
+
+// Floating Geometric Objects
+const floatingObjects = [];
+
+function createFloatingObject(geo, mat, pos, scale, rotSpeed) {
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(...pos);
+  mesh.scale.setScalar(scale);
+  mesh.userData.rotSpeed = rotSpeed;
+  mesh.userData.baseY = pos[1];
+  mesh.userData.floatOffset = Math.random() * Math.PI * 2;
+  scene.add(mesh);
+  floatingObjects.push(mesh);
+  return mesh;
+}
+
+// Large torus ring
+createFloatingObject(
+  new THREE.TorusGeometry(30, 0.4, 16, 100),
+  glowMat, [0, 0, -80], 1, { x: 0.001, y: 0.003, z: 0.002 }
+);
+
+// Smaller torus
+createFloatingObject(
+  new THREE.TorusGeometry(18, 0.3, 16, 80),
+  new THREE.MeshStandardMaterial({ color: 0x8b5cf6, emissive: 0x8b5cf6, emissiveIntensity: 0.3, metalness: 0.9, roughness: 0.15, transparent: true, opacity: 0.5 }),
+  [40, -30, -60], 1, { x: 0.003, y: -0.002, z: 0.001 }
+);
+
+// Wireframe icosahedrons
+for (let i = 0; i < 6; i++) {
+  const size = 3 + Math.random() * 8;
+  const x = (Math.random() - 0.5) * 300;
+  const y = (Math.random() - 0.5) * 200;
+  const z = -50 + (Math.random() - 0.5) * 200;
+  createFloatingObject(
+    new THREE.IcosahedronGeometry(size, 0), wireMat.clone(),
+    [x, y, z], 1,
+    { x: 0.002 + Math.random() * 0.005, y: 0.002 + Math.random() * 0.005, z: 0.001 }
+  );
+}
+
+// Glass cubes
+for (let i = 0; i < 8; i++) {
+  const size = 2 + Math.random() * 5;
+  const x = (Math.random() - 0.5) * 350;
+  const y = (Math.random() - 0.5) * 250;
+  const z = -30 + (Math.random() - 0.5) * 150;
+  const cube = createFloatingObject(
+    new THREE.BoxGeometry(size, size, size), glassMat.clone(),
+    [x, y, z], 1,
+    { x: 0.003 + Math.random() * 0.004, y: 0.002 + Math.random() * 0.004, z: 0.002 }
+  );
+  const edges = new THREE.EdgesGeometry(cube.geometry);
+  const line = new THREE.LineSegments(edges, edgeMat.clone());
+  cube.add(line);
+}
+
+// Octahedrons
+for (let i = 0; i < 5; i++) {
+  const size = 2 + Math.random() * 4;
+  const x = (Math.random() - 0.5) * 300;
+  const y = (Math.random() - 0.5) * 200;
+  const z = -40 + (Math.random() - 0.5) * 160;
+  const oct = createFloatingObject(
+    new THREE.OctahedronGeometry(size, 0),
+    new THREE.MeshStandardMaterial({
+      color: 0xa78bfa, emissive: 0x7c3aed, emissiveIntensity: 0.2,
+      metalness: 0.8, roughness: 0.2, transparent: true, opacity: 0.6,
+    }),
+    [x, y, z], 1, { x: 0.004, y: 0.003, z: 0.002 }
+  );
+  const edges = new THREE.EdgesGeometry(oct.geometry);
+  const line = new THREE.LineSegments(edges, edgeMat.clone());
+  oct.add(line);
+}
+
+// Particle Field
+const particleCount = 2000;
+const particleGeo = new THREE.BufferGeometry();
+const particlePositions = new Float32Array(particleCount * 3);
+const particleSizes = new Float32Array(particleCount);
+
+for (let i = 0; i < particleCount; i++) {
+  particlePositions[i * 3] = (Math.random() - 0.5) * 800;
+  particlePositions[i * 3 + 1] = (Math.random() - 0.5) * 600;
+  particlePositions[i * 3 + 2] = (Math.random() - 0.5) * 600;
+  particleSizes[i] = Math.random() * 2 + 0.5;
+}
+
+particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+particleGeo.setAttribute('size', new THREE.BufferAttribute(particleSizes, 1));
+
+const particleMat = new THREE.PointsMaterial({
+  size: 1.2, color: 0x6366f1, transparent: true, opacity: 0.4,
+  sizeAttenuation: true, blending: THREE.AdditiveBlending,
+});
+const particles = new THREE.Points(particleGeo, particleMat);
+scene.add(particles);
+
+// Stars
+const starCount = 1500;
+const starGeo = new THREE.BufferGeometry();
+const starPos = new Float32Array(starCount * 3);
+for (let i = 0; i < starCount; i++) {
+  starPos[i * 3] = (Math.random() - 0.5) * 1000;
+  starPos[i * 3 + 1] = (Math.random() - 0.5) * 800;
+  starPos[i * 3 + 2] = (Math.random() - 0.5) * 800;
+}
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+const starMat = new THREE.PointsMaterial({
+  size: 0.6, color: 0xffffff, transparent: true, opacity: 0.15, sizeAttenuation: true,
+});
+const stars = new THREE.Points(starGeo, starMat);
+scene.add(stars);
+
+// Grid Floor
+const gridHelper = new THREE.GridHelper(500, 60, 0x1e1b4b, 0x0f0f23);
+gridHelper.position.y = -80;
+gridHelper.material.transparent = true;
+gridHelper.material.opacity = 0.3;
+scene.add(gridHelper);
+
+// Connection Lines
+const lineMat = new THREE.LineBasicMaterial({
+  color: 0x6366f1, transparent: true, opacity: 0.06,
+});
+
+for (let i = 0; i < 15; i++) {
+  const points = [];
+  const a = floatingObjects[Math.floor(Math.random() * floatingObjects.length)];
+  const b = floatingObjects[Math.floor(Math.random() * floatingObjects.length)];
+  if (a !== b) {
+    points.push(a.position.clone());
+    const mid = a.position.clone().add(b.position).multiplyScalar(0.5);
+    mid.y += (Math.random() - 0.5) * 30;
+    points.push(mid);
+    points.push(b.position.clone());
+    const curve = new THREE.CatmullRomCurve3(points);
+    const lineGeo = new THREE.BufferGeometry().setFromPoints(curve.getPoints(30));
+    const line = new THREE.Line(lineGeo, lineMat.clone());
+    scene.add(line);
+  }
+}
+
+// Mouse Tracking
+const mouse = { x: 0, y: 0 };
+const target = { x: 0, y: 0 };
+
+document.addEventListener('mousemove', (e) => {
+  mouse.x = (e.clientX / window.innerWidth - 0.5) * 2;
+  mouse.y = (e.clientY / window.innerHeight - 0.5) * 2;
+});
+
+// Scroll Progress
+let scrollProgress = 0;
+window.addEventListener('scroll', () => {
+  scrollProgress = window.scrollY / (document.body.scrollHeight - window.innerHeight);
+});
+
+// Animation Loop
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const elapsed = clock.getElapsedTime();
+
+  target.x += (mouse.x - target.x) * 0.02;
+  target.y += (mouse.y - target.y) * 0.02;
+
+  camera.position.x = target.x * 15;
+  camera.position.y = -target.y * 10 - scrollProgress * 30;
+  camera.position.z = 120 - scrollProgress * 40;
+  camera.lookAt(target.x * 5, -target.y * 5 - scrollProgress * 20, -50);
+
+  floatingObjects.forEach((obj) => {
+    obj.rotation.x += obj.userData.rotSpeed.x;
+    obj.rotation.y += obj.userData.rotSpeed.y;
+    obj.rotation.z += obj.userData.rotSpeed.z;
+    obj.position.y = obj.userData.baseY + Math.sin(elapsed * 0.5 + obj.userData.floatOffset) * 3;
+  });
+
+  particles.rotation.y = elapsed * 0.02;
+  particles.rotation.x = Math.sin(elapsed * 0.01) * 0.05;
+  stars.rotation.y = -elapsed * 0.005;
+
+  pointLight1.position.x = 50 + Math.sin(elapsed * 0.3) * 20;
+  pointLight1.position.y = 80 + Math.cos(elapsed * 0.4) * 15;
+  pointLight2.position.x = -60 + Math.cos(elapsed * 0.2) * 25;
+  pointLight3.position.z = -40 + Math.sin(elapsed * 0.5) * 20;
+
+  gridHelper.position.z = -Math.sin(elapsed * 0.1) * 5;
+
+  composer.render();
+}
+animate();
+
+// Resize
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// GSAP ANIMATIONS
+// ═══════════════════════════════════════════════════════════════
+
+gsap.registerPlugin(ScrollTrigger);
+
+// Hero entrance
+const heroTl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+heroTl
+  .to('.hero-badge', { opacity: 1, y: 0, duration: 0.8 }, 0.2)
+  .to('.hero h1', { opacity: 1, y: 0, duration: 1 }, 0.4)
+  .to('.hero .subtitle', { opacity: 1, y: 0, duration: 0.8 }, 0.7)
+  .to('.hero-actions', { opacity: 1, y: 0, duration: 0.8 }, 0.9)
+  .to('.hero-shortcut', { opacity: 1, y: 0, duration: 0.8 }, 1.1)
+  .to('.palette-3d-container', { opacity: 1, y: 0, duration: 1.2, ease: 'power2.out' }, 1.0)
+  .to('.stats-bar', { opacity: 1, y: 0, duration: 0.8 }, 1.4);
+
+// Palette 3D tilt on mouse
+const paletteDemoEl = document.getElementById('palette-demo');
+document.addEventListener('mousemove', (e) => {
+  const rect = paletteDemoEl.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  const rotX = ((e.clientY - centerY) / window.innerHeight) * 12;
+  const rotY = ((e.clientX - centerX) / window.innerWidth) * -12;
+  gsap.to(paletteDemoEl, {
+    rotateX: 5 + rotX, rotateY: rotY,
+    duration: 1.2, ease: 'power2.out',
+  });
+});
+
+// Scroll reveals
+gsap.utils.toArray('.reveal').forEach((el) => {
+  gsap.to(el, {
+    opacity: 1, y: 0, duration: 0.8, ease: 'power2.out',
+    scrollTrigger: { trigger: el, start: 'top 85%', toggleActions: 'play none none reverse' },
+  });
+});
+
+// Feature cards stagger
+gsap.utils.toArray('.feature-card').forEach((card, i) => {
+  gsap.to(card, {
+    opacity: 1, y: 0, duration: 0.6, delay: i * 0.08,
+    ease: 'power2.out',
+    scrollTrigger: { trigger: card, start: 'top 88%', toggleActions: 'play none none reverse' },
+  });
+});
+
+// Stat counter animation
+document.querySelectorAll('.stat-number').forEach((el) => {
+  const count = parseInt(el.dataset.count);
+  const text = el.dataset.text;
+  ScrollTrigger.create({
+    trigger: el,
+    start: 'top 85%',
+    onEnter: () => {
+      if (text) {
+        el.textContent = text;
+      } else {
+        gsap.to({ val: 0 }, {
+          val: count, duration: 1.5, ease: 'power2.out',
+          onUpdate: function() {
+            el.textContent = Math.round(this.targets()[0].val) + (count >= 80 ? '+' : '');
+          }
+        });
+      }
+    },
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// PALETTE TYPING ANIMATION
+// ═══════════════════════════════════════════════════════════════
+
+const DEMO_SCENARIOS = [
+  {
+    query: 'gh react hooks',
+    results: [
+      { icon: '\u{1F419}', name: 'Search GitHub for "<hl>react hooks</hl>"', desc: 'gh \u2192 GitHub', badge: 'SEARCH' },
+      { icon: '\u{1F4C1}', name: '<hl>React</hl> \u2014 Pull Requests', desc: 'github.com/facebook/react/pulls', badge: 'TAB' },
+      { icon: '\u{1F4DA}', name: 'MDN: <hl>React Hooks</hl> Guide', desc: 'developer.mozilla.org', badge: 'HISTORY' },
+    ],
+  },
+  {
+    query: '@gmail',
+    results: [
+      { icon: '\u{1F4E7}', name: '<hl>Gmail</hl> - Inbox (3)', desc: 'mail.google.com/mail/u/0/#inbox', badge: 'TAB' },
+      { icon: '\u{1F4E7}', name: '<hl>Gmail</hl> - Compose', desc: 'mail.google.com/mail/u/0/#compose', badge: 'TAB' },
+      { icon: '\u{1F4E7}', name: 'Google: Open <hl>Gmail</hl>', desc: 'Open Gmail inbox', badge: 'COMMAND' },
+    ],
+  },
+  {
+    query: '>close dup',
+    results: [
+      { icon: '\u267B', name: '<hl>Close Dup</hl>licate Tabs', desc: 'Close tabs with the same URL', badge: 'COMMAND' },
+      { icon: '\u2715', name: '<hl>Close</hl> Current Tab', desc: 'Close the active tab', badge: 'COMMAND' },
+      { icon: '\u{1F9F9}', name: '<hl>Close</hl> Other Tabs', desc: 'Close all except current', badge: 'COMMAND' },
+    ],
+  },
+  {
+    query: ';sig',
+    results: [
+      { icon: '\u2702', name: 'Email <hl>Sig</hl>nature', desc: ';sig \u2192 Best regards, Sounak Das...', badge: 'SNIPPET' },
+      { icon: '\u2702', name: 'Meeting <hl>Sig</hl>noff', desc: ';signoff \u2192 Thanks for your time...', badge: 'SNIPPET' },
+      { icon: '\u2795', name: 'Create Snippet', desc: 'Open the snippet editor', badge: 'COMMAND' },
+    ],
+  },
+  {
+    query: '/note fix the auth bug',
+    results: [
+      { icon: '\u{1F4DD}', name: 'Save Note: "<hl>fix the auth bug</hl>"', desc: 'Press Enter to save', badge: 'NOTE' },
+    ],
+  },
+];
+
+const typedTextEl = document.getElementById('typed-text');
+const resultsEl = document.getElementById('palette-results');
+let demoIndex = 0;
+
+function renderResults(results) {
+  resultsEl.innerHTML = results.map((r, i) => `
+    <div class="palette-result ${i === 0 ? 'active' : ''}">
+      <div class="r-icon">${r.icon}</div>
+      <div class="r-info">
+        <div class="r-name">${r.name}</div>
+        <div class="r-desc">${r.desc}</div>
+      </div>
+      <span class="r-badge">${r.badge}</span>
+    </div>
+  `).join('');
+}
+
+async function typeScenario(scenario) {
+  const { query, results } = scenario;
+  typedTextEl.textContent = '';
+  resultsEl.innerHTML = '';
+
+  for (let i = 0; i < query.length; i++) {
+    typedTextEl.textContent += query[i];
+    await new Promise(r => setTimeout(r, 60 + Math.random() * 40));
+
+    if (i === Math.min(4, query.length - 1)) {
+      renderResults(results);
+      gsap.from('.palette-result', {
+        y: 10, opacity: 0, duration: 0.3, stagger: 0.08, ease: 'power2.out',
+      });
+    }
+  }
+
+  await new Promise(r => setTimeout(r, 2500));
+
+  const activeResult = resultsEl.querySelector('.palette-result.active');
+  if (activeResult) {
+    gsap.to(activeResult, {
+      scale: 0.97, opacity: 0.7, duration: 0.15, yoyo: true, repeat: 1,
+    });
+  }
+
+  await new Promise(r => setTimeout(r, 800));
+
+  gsap.to([typedTextEl, resultsEl], {
+    opacity: 0, duration: 0.3,
+    onComplete: () => {
+      typedTextEl.textContent = '';
+      resultsEl.innerHTML = '';
+      gsap.to([typedTextEl, resultsEl], { opacity: 1, duration: 0.1 });
+    },
+  });
+
+  await new Promise(r => setTimeout(r, 600));
+}
+
+async function runDemoLoop() {
+  while (true) {
+    await typeScenario(DEMO_SCENARIOS[demoIndex]);
+    demoIndex = (demoIndex + 1) % DEMO_SCENARIOS.length;
+  }
+}
+setTimeout(runDemoLoop, 2500);
+
+// ═══════════════════════════════════════════════════════════════
+// SEARCH ENGINES ORBIT
+// ═══════════════════════════════════════════════════════════════
+
+const engines = [
+  { key: 'g', name: 'Google', icon: '\u{1F50D}' },
+  { key: 'yt', name: 'YouTube', icon: '\u25B6' },
+  { key: 'gh', name: 'GitHub', icon: '\u{1F419}' },
+  { key: 'npm', name: 'NPM', icon: '\u{1F4E6}' },
+  { key: 'mdn', name: 'MDN', icon: '\u{1F4D8}' },
+  { key: 'so', name: 'Stack Overflow', icon: '\u{1F4DA}' },
+  { key: 'w', name: 'Wikipedia', icon: '\u{1F310}' },
+  { key: 'r', name: 'Reddit', icon: '\u{1F4AC}' },
+  { key: 'tw', name: 'X (Twitter)', icon: '\u{1D54F}' },
+  { key: 'amz', name: 'Amazon', icon: '\u{1F6D2}' },
+  { key: 'maps', name: 'Maps', icon: '\u{1F5FA}' },
+  { key: 'drive', name: 'Drive', icon: '\u{1F4BE}' },
+  { key: 'img', name: 'Images', icon: '\u{1F5BC}' },
+  { key: 'news', name: 'News', icon: '\u{1F4F0}' },
+  { key: 'arxiv', name: 'arXiv', icon: '\u{1F4C4}' },
+  { key: 'pypi', name: 'PyPI', icon: '\u{1F40D}' },
+  { key: 'crates', name: 'crates.io', icon: '\u{1F980}' },
+  { key: 'imdb', name: 'IMDb', icon: '\u{1F3AC}' },
+];
+
+const orbitContainer = document.getElementById('engines-orbit');
+const orbitW = orbitContainer.offsetWidth || 500;
+const orbitH = orbitContainer.offsetHeight || 500;
+const centerXO = orbitW / 2;
+const centerYO = orbitH / 2;
+
+engines.forEach((eng, i) => {
+  const angle = (i / engines.length) * Math.PI * 2 - Math.PI / 2;
+  const radiusX = centerXO * 0.85;
+  const radiusY = centerYO * 0.85;
+  const x = centerXO + Math.cos(angle) * radiusX - 60;
+  const y = centerYO + Math.sin(angle) * radiusY - 18;
+
+  const pill = document.createElement('div');
+  pill.className = 'engine-pill';
+  pill.innerHTML = `${eng.icon} <span class="e-key">${eng.key}</span> ${eng.name}`;
+  pill.style.left = `${x}px`;
+  pill.style.top = `${y}px`;
+  orbitContainer.appendChild(pill);
+
+  gsap.to(pill, {
+    opacity: 1, scale: 1, duration: 0.5, delay: i * 0.06,
+    ease: 'back.out(1.5)',
+    scrollTrigger: { trigger: orbitContainer, start: 'top 80%', toggleActions: 'play none none reverse' },
+  });
+
+  gsap.to(pill, {
+    y: `+=${8 + Math.random() * 8}`,
+    x: `+=${(Math.random() - 0.5) * 6}`,
+    duration: 2.5 + Math.random() * 2,
+    ease: 'sine.inOut',
+    repeat: -1, yoyo: true,
+    delay: Math.random() * 2,
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 3D COMMAND CAROUSEL
+// ═══════════════════════════════════════════════════════════════
+
+const COMMAND_CATEGORIES = [
+  {
+    title: 'Tab Management',
+    icon: '\u{1F4CB}',
+    accent: '#6366f1',
+    commands: [
+      { icon: '\u{1F500}', name: 'Switch to Tab', desc: 'Fuzzy search & jump to any open tab' },
+      { icon: '\u2795', name: 'New Tab', desc: 'Open a new blank tab' },
+      { icon: '\u2715', name: 'Close Current Tab', desc: 'Close the active tab' },
+      { icon: '\u29C9', name: 'Duplicate Tab', desc: 'Clone the current tab' },
+      { icon: '\u{1F4CC}', name: 'Pin / Unpin Tab', desc: 'Toggle pin on current tab' },
+      { icon: '\u{1F507}', name: 'Mute / Unmute Tab', desc: 'Toggle tab audio' },
+      { icon: '\u21E4', name: 'Move Tab to Start', desc: 'Move tab to beginning' },
+      { icon: '\u21E5', name: 'Move Tab to End', desc: 'Move tab to end of bar' },
+      { icon: '\u2197', name: 'Move to New Window', desc: 'Detach into its own window' },
+      { icon: '\u{1F9F9}', name: 'Close Other Tabs', desc: 'Keep only current (skip pinned)' },
+      { icon: '\u27F9', name: 'Close Tabs to Right', desc: 'Close all after current' },
+      { icon: '\u267B', name: 'Close Duplicate Tabs', desc: 'Deduplicate by URL' },
+      { icon: '\u{1F4A4}', name: 'Suspend Tab', desc: 'Discard to free memory' },
+      { icon: '\u{1F4A4}', name: 'Suspend Other Tabs', desc: 'Suspend all inactive tabs' },
+    ],
+  },
+  {
+    title: 'Tab Groups',
+    icon: '\u{1F4C1}',
+    accent: '#8b5cf6',
+    commands: [
+      { icon: '\u{1F4C1}', name: 'Create Tab Group', desc: 'Group current tab (name from query)' },
+      { icon: '\u2795', name: 'Add Tab to Group', desc: 'Move current tab into a group' },
+      { icon: '\u{1F4E6}', name: 'Collapse / Expand', desc: 'Toggle group collapsed state' },
+      { icon: '\u{1F513}', name: 'Ungroup All', desc: 'Dissolve a tab group' },
+      { icon: '\u21A9', name: 'Remove from Group', desc: 'Detach current tab from its group' },
+    ],
+  },
+  {
+    title: 'Navigation',
+    icon: '\u{1F9ED}',
+    accent: '#06b6d4',
+    commands: [
+      { icon: '\u21BB', name: 'Reload Page', desc: 'Refresh current page' },
+      { icon: '\u2190', name: 'Go Back', desc: 'Navigate back in history' },
+      { icon: '\u2192', name: 'Go Forward', desc: 'Navigate forward' },
+      { icon: '\u2B06', name: 'Scroll to Top', desc: 'Jump to page top' },
+      { icon: '\u2B07', name: 'Scroll to Bottom', desc: 'Jump to page bottom' },
+      { icon: '\u{1F4CB}', name: 'Copy Current URL', desc: 'Copy URL to clipboard' },
+      { icon: '\u{1F310}', name: 'Go to URL', desc: 'Type a URL to navigate directly' },
+      { icon: '\u{1F50D}', name: 'Search Google', desc: 'Fallback: Enter searches Google' },
+    ],
+  },
+  {
+    title: 'Bookmarks & History',
+    icon: '\u2B50',
+    accent: '#f59e0b',
+    commands: [
+      { icon: '\u2B50', name: 'Search Bookmarks', desc: 'Use # prefix \u2014 title + URL + folder' },
+      { icon: '\u{1F4DC}', name: 'Search History', desc: 'Use / prefix \u2014 with relative timestamps' },
+      { icon: '\u21A9', name: 'Recently Closed', desc: 'Undo close \u2014 restore recent tabs' },
+    ],
+  },
+  {
+    title: 'Snippets & Notes',
+    icon: '\u2702\uFE0F',
+    accent: '#ec4899',
+    commands: [
+      { icon: '\u2702', name: 'Expand Snippet', desc: 'Type ;trigger to paste text' },
+      { icon: '\u2795', name: 'Create Snippet', desc: 'In-palette editor with form fields' },
+      { icon: '\u{1F4DD}', name: 'Save Quick Note', desc: '/note your text \u2014 saves with timestamp' },
+      { icon: '\u{1F4CB}', name: 'List All Notes', desc: '/notes \u2014 searchable, copy on select' },
+      { icon: '\u{1F552}', name: '{{date}} {{time}}', desc: '10 dynamic variables in snippets' },
+      { icon: '\u{1F310}', name: '{{url}} {{title}}', desc: 'Page context variables' },
+    ],
+  },
+  {
+    title: 'Aliases & Clipboard',
+    icon: '\u26A1',
+    accent: '#22c55e',
+    commands: [
+      { icon: '\u26A1', name: 'Create Alias', desc: '/alias mail https://mail.google.com' },
+      { icon: '\u{1F517}', name: 'Parameterized Quicklinks', desc: 'Use %s for query replacement' },
+      { icon: '\u{1F4CB}', name: 'Clipboard History', desc: 'Last 50 copied items, 7-day expiry' },
+      { icon: '\u{1F4CC}', name: 'Pin Clipboard Item', desc: 'Prevent auto-expiry on pinned items' },
+      { icon: '\u{1F4E5}', name: 'Import Data', desc: 'Import aliases, snippets from JSON' },
+      { icon: '\u{1F4E4}', name: 'Export Data', desc: 'Export all data as JSON' },
+    ],
+  },
+  {
+    title: 'Quick Site Search',
+    icon: '\u{1F50D}',
+    accent: '#f97316',
+    commands: [
+      { icon: '\u{1F50D}', name: 'g query', desc: 'Google Search' },
+      { icon: '\u25B6', name: 'yt query', desc: 'YouTube Search' },
+      { icon: '\u{1F419}', name: 'gh query', desc: 'GitHub Search' },
+      { icon: '\u{1F4E6}', name: 'npm query', desc: 'NPM Package Search' },
+      { icon: '\u{1F4D8}', name: 'mdn query', desc: 'MDN Web Docs' },
+      { icon: '\u{1F4DA}', name: 'so query', desc: 'Stack Overflow' },
+      { icon: '\u{1F310}', name: 'w query', desc: 'Wikipedia' },
+      { icon: '\u{1F4AC}', name: 'r query', desc: 'Reddit Search' },
+      { icon: '\u{1F6D2}', name: 'amz query', desc: 'Amazon Search' },
+      { icon: '\u{1F5FA}', name: 'maps query', desc: 'Google Maps' },
+      { icon: '\u{1F4F0}', name: 'news / arxiv / pypi', desc: '+ 8 more engines' },
+      { icon: '\u2699', name: 'Add Custom Engine', desc: 'Define your own search keywords' },
+    ],
+  },
+  {
+    title: 'Page Actions',
+    icon: '\u{1F4C4}',
+    accent: '#14b8a6',
+    commands: [
+      { icon: '\u{1F4DD}', name: 'Copy as Markdown Link', desc: 'Copy [Title](URL)' },
+      { icon: '\u{1F4C4}', name: 'Copy Page Title', desc: 'Title to clipboard' },
+      { icon: '\u{1F4D1}', name: 'Copy All Tab URLs', desc: 'All open tab URLs as list' },
+      { icon: '\u{1F4CB}', name: 'Copy All as Markdown', desc: 'All tabs as markdown links' },
+      { icon: '\u{1F3F7}', name: 'Copy Page Metadata', desc: 'OG tags, Twitter cards, SEO' },
+      { icon: '\u{1F4AC}', name: 'Copy Selection as Quote', desc: 'Blockquote + source link' },
+      { icon: '\u{1F50E}', name: 'Find on Page', desc: 'Triggers browser Ctrl+F' },
+      { icon: '\u{1F5A8}', name: 'Print Page', desc: 'Open print dialog' },
+      { icon: '\u26F6', name: 'Toggle Fullscreen', desc: 'Enter/exit fullscreen mode' },
+    ],
+  },
+  {
+    title: 'Developer Tools',
+    icon: '\u{1F6E0}',
+    accent: '#ef4444',
+    commands: [
+      { icon: '\u{1F9D1}\u200D\u{1F4BB}', name: 'View Page Source', desc: 'Opens view-source: in new tab' },
+      { icon: '\u2318', name: 'Copy as cURL', desc: 'Copy cURL command for page' },
+      { icon: '\u23F1', name: 'Performance Timing', desc: 'DNS, TTFB, DOM, load breakdown' },
+      { icon: '\u{1F3A8}', name: 'CSS Custom Properties', desc: 'Extract all CSS variables' },
+      { icon: '\u{1F4DC}', name: 'List Page Scripts', desc: 'Copy all external script URLs' },
+      { icon: '\u{1F333}', name: 'DOM Element Count', desc: 'Total elements, depth, top tags' },
+      { icon: '\u{1F517}', name: 'Copy Page Links', desc: 'All anchor hrefs on page' },
+      { icon: '\u{1F36A}', name: 'Cookies Summary', desc: 'Cookie names & sizes' },
+      { icon: '\u{1F4BE}', name: 'LocalStorage Keys', desc: 'All localStorage keys for domain' },
+    ],
+  },
+  {
+    title: 'Workflows & Site Commands',
+    icon: '\u{1F680}',
+    accent: '#a855f7',
+    commands: [
+      { icon: '\u{1F9F9}', name: 'Clean Up Tabs', desc: 'Dedupe \u2192 suspend inactive' },
+      { icon: '\u{1F3AF}', name: 'Focus Mode', desc: 'Pin current \u2192 close all others' },
+      { icon: '\u{1F4E4}', name: 'Share Session', desc: 'Copy all tabs as markdown list' },
+      { icon: '\u{1F52C}', name: 'Research Mode', desc: 'New group with blank tabs' },
+      { icon: '\u{1F4BE}', name: 'Save All Tabs', desc: 'Bookmark all open tabs' },
+      { icon: '\u2600', name: 'Morning Routine', desc: 'Open Gmail, Calendar, GitHub' },
+      { icon: '\u{1F419}', name: 'GitHub: My PRs', desc: 'Context: on github.com' },
+      { icon: '\u{1F419}', name: 'GitHub: Issues / Notifs', desc: 'Context: on github.com' },
+      { icon: '\u25B6', name: 'YouTube: Subs / History', desc: 'Context: on youtube.com' },
+      { icon: '\u{1F4E7}', name: 'Google: Gmail / Drive / Cal', desc: 'Context: on google.com' },
+      { icon: '\u{1F4AC}', name: 'Reddit: Saved Posts', desc: 'Context: on reddit.com' },
+    ],
+  },
+  {
+    title: 'Settings & Themes',
+    icon: '\u2699',
+    accent: '#64748b',
+    commands: [
+      { icon: '\u{1F317}', name: 'Theme: System Auto', desc: 'Follow OS dark/light' },
+      { icon: '\u{1F319}', name: 'Theme: Dark', desc: 'Always dark palette' },
+      { icon: '\u2600', name: 'Theme: Light', desc: 'Always light palette' },
+      { icon: '\u2699', name: 'Open Hatch Settings', desc: 'Full options page' },
+      { icon: '\u{1F4E5}', name: 'Import from JSON', desc: 'Restore snippets, aliases, notes' },
+      { icon: '\u{1F4E4}', name: 'Export as JSON', desc: 'Backup all your data' },
+    ],
+  },
+];
+
+// Build the 3D carousel
+const ring = document.getElementById('carousel-ring');
+const dotsContainer = document.getElementById('carousel-dots');
+const panelCount = COMMAND_CATEGORIES.length;
+const theta = 360 / panelCount;
+// Radius so panels don't overlap (panel width 320px)
+const radius = Math.round(320 / (2 * Math.tan(Math.PI / panelCount)));
+
+let currentPanel = 0;
+
+COMMAND_CATEGORIES.forEach((cat, i) => {
+  const panel = document.createElement('div');
+  panel.className = 'carousel-panel' + (i === 0 ? ' active' : '');
+  panel.style.transform = `rotateY(${theta * i}deg) translateZ(${radius}px)`;
+
+  const cmdsHtml = cat.commands.map(cmd => `
+    <div class="pcmd">
+      <div class="pcmd-icon">${cmd.icon}</div>
+      <div class="pcmd-info">
+        <div class="pcmd-name">${cmd.name}</div>
+        <div class="pcmd-desc">${cmd.desc}</div>
+      </div>
+    </div>
+  `).join('');
+
+  panel.innerHTML = `
+    <div class="panel-inner" style="--panel-accent: linear-gradient(90deg, ${cat.accent}, ${cat.accent}88); --panel-glow: ${cat.accent}15; --panel-icon-bg: ${cat.accent}20;">
+      <div class="panel-header">
+        <div class="panel-icon" style="background:${cat.accent}18;">${cat.icon}</div>
+        <div class="panel-header-text">
+          <h3>${cat.title}</h3>
+          <div class="panel-count">${cat.commands.length} commands</div>
+        </div>
+      </div>
+      <div class="panel-commands">${cmdsHtml}</div>
+    </div>
+  `;
+  ring.appendChild(panel);
+
+  // Create dot
+  const dot = document.createElement('div');
+  dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
+  dot.addEventListener('click', () => goToPanel(i));
+  dotsContainer.appendChild(dot);
+});
+
+// Set initial rotation
+ring.style.transform = `translateZ(-${radius}px) rotateY(0deg)`;
+
+function goToPanel(index) {
+  currentPanel = index;
+  const angle = -theta * currentPanel;
+  ring.style.transform = `translateZ(-${radius}px) rotateY(${angle}deg)`;
+
+  // Update active states
+  document.querySelectorAll('.carousel-panel').forEach((p, i) => {
+    p.classList.toggle('active', i === currentPanel);
+  });
+  document.querySelectorAll('.carousel-dot').forEach((d, i) => {
+    d.classList.toggle('active', i === currentPanel);
+  });
+}
+
+// Nav buttons
+document.getElementById('carousel-prev').addEventListener('click', () => {
+  goToPanel((currentPanel - 1 + panelCount) % panelCount);
+});
+document.getElementById('carousel-next').addEventListener('click', () => {
+  goToPanel((currentPanel + 1) % panelCount);
+});
+
+// Drag to rotate
+const carouselScene = document.getElementById('carousel-scene');
+let isDragging = false;
+let startX = 0;
+let dragAngle = 0;
+
+carouselScene.addEventListener('mousedown', (e) => {
+  isDragging = true;
+  startX = e.clientX;
+  dragAngle = -theta * currentPanel;
+  ring.style.transition = 'none';
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  const dx = e.clientX - startX;
+  const rotateAmount = dragAngle + (dx / 4);
+  ring.style.transform = `translateZ(-${radius}px) rotateY(${rotateAmount}deg)`;
+});
+
+document.addEventListener('mouseup', (e) => {
+  if (!isDragging) return;
+  isDragging = false;
+  ring.style.transition = 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
+
+  const dx = e.clientX - startX;
+  const panelsMoved = Math.round(dx / 150);
+  let newPanel = currentPanel - panelsMoved;
+  newPanel = ((newPanel % panelCount) + panelCount) % panelCount;
+  goToPanel(newPanel);
+});
+
+// Touch support
+carouselScene.addEventListener('touchstart', (e) => {
+  isDragging = true;
+  startX = e.touches[0].clientX;
+  dragAngle = -theta * currentPanel;
+  ring.style.transition = 'none';
+}, { passive: true });
+
+document.addEventListener('touchmove', (e) => {
+  if (!isDragging) return;
+  const dx = e.touches[0].clientX - startX;
+  const rotateAmount = dragAngle + (dx / 4);
+  ring.style.transform = `translateZ(-${radius}px) rotateY(${rotateAmount}deg)`;
+}, { passive: true });
+
+document.addEventListener('touchend', (e) => {
+  if (!isDragging) return;
+  isDragging = false;
+  ring.style.transition = 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
+
+  const dx = (e.changedTouches[0]?.clientX || startX) - startX;
+  const panelsMoved = Math.round(dx / 100);
+  let newPanel = currentPanel - panelsMoved;
+  newPanel = ((newPanel % panelCount) + panelCount) % panelCount;
+  goToPanel(newPanel);
+});
+
+// Keyboard navigation for carousel
+document.addEventListener('keydown', (e) => {
+  const cmdSection = document.getElementById('commands');
+  const rect = cmdSection.getBoundingClientRect();
+  if (rect.top < window.innerHeight && rect.bottom > 0) {
+    if (e.key === 'ArrowLeft') goToPanel((currentPanel - 1 + panelCount) % panelCount);
+    if (e.key === 'ArrowRight') goToPanel((currentPanel + 1) % panelCount);
+  }
+});
+
+// Auto-rotate when in view (slow gentle rotation)
+let autoRotateTimer = null;
+ScrollTrigger.create({
+  trigger: '#commands',
+  start: 'top 60%',
+  onEnter: () => {
+    autoRotateTimer = setInterval(() => {
+      if (!isDragging) goToPanel((currentPanel + 1) % panelCount);
+    }, 4000);
+  },
+  onLeave: () => { clearInterval(autoRotateTimer); },
+  onEnterBack: () => {
+    autoRotateTimer = setInterval(() => {
+      if (!isDragging) goToPanel((currentPanel + 1) % panelCount);
+    }, 4000);
+  },
+  onLeaveBack: () => { clearInterval(autoRotateTimer); },
+});
+
+// Entrance animation for carousel
+gsap.from('#carousel-scene', {
+  opacity: 0, scale: 0.8, rotateX: 15, duration: 1.2, ease: 'power3.out',
+  scrollTrigger: { trigger: '#commands', start: 'top 70%', toggleActions: 'play none none reverse' },
+});
+
+// Feature card 3D tilt on hover
+document.querySelectorAll('.feature-card').forEach((card) => {
+  card.addEventListener('mousemove', (e) => {
+    const rect = card.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width - 0.5) * 8;
+    const y = ((e.clientY - rect.top) / rect.height - 0.5) * -8;
+    card.style.transform = `translateY(-4px) rotateX(${y}deg) rotateY(${x}deg)`;
+  });
+  card.addEventListener('mouseleave', () => {
+    card.style.transform = 'translateY(0) rotateX(0) rotateY(0)';
+  });
+});
+</script>
+</body>
+</html>

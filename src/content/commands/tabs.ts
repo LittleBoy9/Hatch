@@ -4,7 +4,22 @@ import type { HatchCommand, TabInfo, CommandContext } from '../../types';
 
 export function sendMessage<T>(msg: unknown): Promise<T> {
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage(msg, (response: T) => resolve(response));
+    if (!chrome.runtime?.id) {
+      // Extension context invalidated (reloaded) — fail silently
+      resolve(undefined as T);
+      return;
+    }
+    try {
+      chrome.runtime.sendMessage(msg, (response: T) => {
+        if (chrome.runtime.lastError) {
+          resolve(undefined as T);
+          return;
+        }
+        resolve(response);
+      });
+    } catch {
+      resolve(undefined as T);
+    }
   });
 }
 
