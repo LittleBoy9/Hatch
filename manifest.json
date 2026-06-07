@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Hatch",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Universal Cmd+K command palette for the browser — switch tabs, search bookmarks, run commands, all from your keyboard.",
   "permissions": [
     "tabs",
