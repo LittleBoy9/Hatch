@@ -46,11 +46,19 @@ export const importExportCommands: HatchCommand[] = [
           return;
         }
 
-        // Import aliases
+        // Import aliases (older exports may lack id/name)
         if (Array.isArray(data.aliases)) {
           for (const alias of data.aliases) {
-            if (alias.id && alias.keyword && alias.url) {
-              await sendMessage({ type: 'SAVE_ALIAS', alias });
+            if (alias.keyword && alias.url) {
+              await sendMessage({
+                type: 'SAVE_ALIAS',
+                alias: {
+                  id: alias.id || `alias-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                  keyword: alias.keyword,
+                  name: alias.name || alias.keyword,
+                  url: alias.url,
+                },
+              });
             }
           }
         }

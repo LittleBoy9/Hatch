@@ -140,6 +140,16 @@ export class Palette {
     // Input events
     this.input.addEventListener('input', () => this.onInput());
     this.input.addEventListener('keydown', (e) => this.onKeyDown(e));
+
+    // In editor mode the search input is hidden, so Esc from the editor
+    // fields has to be caught at the container level
+    this.container.addEventListener('keydown', (e) => {
+      if (this.editorMode && e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        this.exitEditor();
+      }
+    });
   }
 
   // ─── Open / Close ────────────────────────────────────────
@@ -734,17 +744,13 @@ export class Palette {
         break;
       }
       case 'alias': {
-        // Load existing, add new
-        const aliases = await new Promise<Array<{ keyword: string; url: string }>>((resolve) => {
-          chrome.storage.local.get('aliases', (data) => {
-            resolve((data.aliases || []) as Array<{ keyword: string; url: string }>);
-          });
-        });
-        const filtered = aliases.filter((a) => a.keyword !== vals.keyword);
-        filtered.push({ keyword: vals.keyword, url: vals.url });
-        await new Promise<void>((resolve) => {
-          chrome.storage.local.set({ aliases: filtered }, resolve);
-        });
+        const alias = {
+          id: `alias-${Date.now()}`,
+          keyword: vals.keyword,
+          name: vals.keyword,
+          url: vals.url,
+        };
+        await sendMessage({ type: 'SAVE_ALIAS', alias });
         break;
       }
       case 'engine': {

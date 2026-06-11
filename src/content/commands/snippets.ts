@@ -59,6 +59,39 @@ export async function getSnippetCommands(): Promise<HatchCommand[]> {
   }));
 }
 
+// ─── Inline Snippet Creation ─────────────────────────────────
+
+/**
+ * Detects the inline creation pattern "trigger | name | body",
+ * e.g. ";sig | Email Signature | Best regards, Sounak"
+ */
+export function getCreateSnippetCommand(query: string): HatchCommand | null {
+  const match = query.match(/^(\S+)\s*\|\s*([^|]+?)\s*\|\s*(.+)$/s);
+  if (!match) return null;
+
+  const [, rawTrigger, name, body] = match;
+  const trigger = rawTrigger.startsWith(';') ? rawTrigger : `;${rawTrigger}`;
+
+  return {
+    id: 'create-snippet-inline',
+    name: `Create Snippet: ${trigger} → ${name}`,
+    description: 'Press Enter to save',
+    keywords: ['snippet', 'create'],
+    icon: '✂',
+    category: 'snippet',
+    action: async (ctx: CommandContext) => {
+      const snippet: Snippet = {
+        id: `snip-${Date.now()}`,
+        trigger,
+        name,
+        body,
+      };
+      await sendMessage({ type: 'SAVE_SNIPPET', snippet });
+      ctx.close();
+    },
+  };
+}
+
 // ─── Static Snippet Management Commands ──────────────────────
 
 export const staticSnippetCommands: HatchCommand[] = [

@@ -15,12 +15,13 @@ function copyStaticFiles() {
     path.resolve(distDir, 'manifest.json')
   );
 
-  // Copy icons
+  // Copy icons (skip dotfiles like .DS_Store)
   const iconsDir = path.resolve(__dirname, 'public', 'icons');
   const distIconsDir = path.resolve(distDir, 'icons');
   if (!fs.existsSync(distIconsDir)) fs.mkdirSync(distIconsDir, { recursive: true });
   if (fs.existsSync(iconsDir)) {
     for (const file of fs.readdirSync(iconsDir)) {
+      if (file.startsWith('.')) continue;
       fs.copyFileSync(
         path.resolve(iconsDir, file),
         path.resolve(distIconsDir, file)
@@ -28,31 +29,30 @@ function copyStaticFiles() {
     }
   }
 
-  // Copy popup.html
-  const popupHtml = path.resolve(__dirname, 'src', 'popup', 'popup.html');
-  if (fs.existsSync(popupHtml)) {
-    fs.copyFileSync(popupHtml, path.resolve(distDir, 'popup.html'));
-  }
-
-  // Copy options.html
+  // Copy options.html next to its bundle (dist/options/options.js),
+  // so its relative <script src="options.js"> resolves
   const optionsHtml = path.resolve(__dirname, 'src', 'options', 'options.html');
   if (fs.existsSync(optionsHtml)) {
-    fs.copyFileSync(optionsHtml, path.resolve(distDir, 'options.html'));
+    const distOptionsDir = path.resolve(distDir, 'options');
+    if (!fs.existsSync(distOptionsDir)) fs.mkdirSync(distOptionsDir, { recursive: true });
+    fs.copyFileSync(optionsHtml, path.resolve(distOptionsDir, 'options.html'));
   }
 }
 
 const buildOptions = {
+  // Note: popup is intentionally not bundled — the manifest has no
+  // default_popup (the toolbar icon opens the palette directly)
   entryPoints: [
     'src/background/service-worker.ts',
     'src/content/index.ts',
     'src/options/options.ts',
-    'src/popup/popup.ts',
   ],
   bundle: true,
   outdir: 'dist',
+  outbase: 'src',
   format: 'iife',
   target: 'chrome110',
-  sourcemap: true,
+  sourcemap: isWatch,
   minify: !isWatch,
   entryNames: '[dir]/[name]',
   plugins: [

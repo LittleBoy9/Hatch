@@ -1,3 +1,6 @@
+// Mark as a module so top-level names don't collide with other entry scripts
+export {};
+
 // ─── Helpers ─────────────────────────────────────────────────
 
 function $(id: string) { return document.getElementById(id)!; }
@@ -23,7 +26,9 @@ interface Snippet {
 }
 
 interface Alias {
+  id?: string;
   keyword: string;
+  name?: string;
   url: string;
 }
 
@@ -253,7 +258,7 @@ function bindEvents() {
     const aliases = await loadStorage<Alias[]>('aliases', []);
     // Remove existing with same keyword
     const filtered = aliases.filter((a) => a.keyword !== keyword);
-    filtered.push({ keyword, url });
+    filtered.push({ id: `alias-${genId()}`, keyword, name: keyword, url });
     await saveStorage('aliases', filtered);
 
     ($('alias-keyword') as HTMLInputElement).value = '';

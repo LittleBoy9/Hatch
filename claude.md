@@ -58,7 +58,7 @@ hatch/
 │   │       ├── snippets.ts          # Text snippet expansion
 │   │       ├── notes.ts             # Quick scratchpad notes
 │   │       ├── clipboard.ts         # Clipboard history
-│   │       ├── page-actions.ts      # Copy as markdown, find on page, reader mode
+│   │       ├── page-actions.ts      # Copy as markdown, metadata, print, fullscreen
 │   │       ├── dev-tools.ts         # Developer quick actions
 │   │       └── navigation.ts        # Go to URL, search Google, reload, scroll
 │   ├── storage/
@@ -185,6 +185,7 @@ hatch/
 - [x] **Options page** — full settings UI with snippet editor, alias manager, search engine config, notes viewer, import/export, frecency stats
 - [x] **Open Hatch Settings** command — opens options page from the palette
 - [x] **Stats dashboard** — snippet count, alias count, search engines, notes, tracked commands
+- [x] **Per-site shortcut disable** — `Disable ⌘K on <site>` palette command hands Cmd+K back to sites that use it natively (Slack, Notion, ...); palette stays reachable via toolbar icon / Cmd+Shift+K. Stored as `disabledSites: string[]`
 
 ---
 
@@ -235,6 +236,7 @@ interface StorageSchema {
 
   // Settings
   settings: HatchSettings;
+  disabledSites: string[];   // hostnames where Cmd+K is handed back to the site
 }
 ```
 
@@ -261,7 +263,6 @@ interface StorageSchema {
 | `Tab` | Autocomplete selected |
 | `Esc` | Close palette |
 | `Space` | Toggle select (multi-select mode, Phase 7) |
-| `Backspace` (empty input) | Go back to previous context |
 
 ### Prefix Filters
 | Prefix | Category |
@@ -301,7 +302,15 @@ interface StorageSchema {
 | Chrome tab groups have zero keyboard support | Phase 5 |
 | The Great Suspender died, 2M users homeless | Phase 7 tab suspend |
 | No extension has match highlighting | Shipped in Phase 1 via quickfuzz |
-| Cmd+K conflicts with Slack/Notion/GitHub | Configurable shortcut via Chrome commands API |
+| Cmd+K conflicts with Slack/Notion/GitHub | Per-site disable command + configurable Cmd+Shift+K via Chrome commands API |
+
+---
+
+## Testing
+
+- `npm test` runs the vitest suite in `tests/` (pure logic: fuzzy mapping, frecency scoring, query parsers, URL detection).
+- `npm run package` runs tests + type-check before zipping — a release cannot be built from failing code.
+- New parsing or scoring logic must come with tests; UI behavior (palette, options page) is verified manually by loading `dist/` unpacked.
 
 ---
 

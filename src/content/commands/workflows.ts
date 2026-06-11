@@ -97,17 +97,12 @@ export const workflowCommands: HatchCommand[] = [
   {
     id: 'workflow-save-restore',
     name: 'Workflow: Save All Tabs as Bookmarks',
-    description: 'Bookmark every open tab for later',
+    description: 'Bookmark every open tab into a dated folder',
     keywords: ['workflow', 'save', 'bookmark', 'all', 'tabs', 'backup'],
     icon: '💾',
     category: 'command',
     action: async (ctx: CommandContext) => {
-      const tabs = await sendMessage<TabInfo[]>({ type: 'GET_ALL_TABS' });
-      if (tabs && tabs.length > 0) {
-        // Copy as a formatted list since we can't create bookmarks from content script
-        const text = tabs.map((t) => `${t.title}\n${t.url}`).join('\n\n');
-        await navigator.clipboard.writeText(text);
-      }
+      await sendMessage({ type: 'SAVE_TABS_AS_BOOKMARKS' });
       ctx.close();
     },
   },

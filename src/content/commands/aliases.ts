@@ -7,11 +7,12 @@ export async function getAliasCommands(): Promise<HatchCommand[]> {
   const aliases = await sendMessage<Alias[]>({ type: 'GET_ALIASES' });
   if (!aliases || aliases.length === 0) return [];
 
+  // Aliases saved by older versions only have { keyword, url }
   return aliases.map((alias) => ({
-    id: `alias-${alias.id}`,
-    name: alias.name,
+    id: `alias-${alias.id || alias.keyword}`,
+    name: alias.name || alias.keyword,
     description: `${alias.keyword} → ${alias.url}`,
-    keywords: ['alias', alias.keyword, alias.name],
+    keywords: ['alias', alias.keyword, alias.name || alias.keyword],
     icon: '⚡',
     category: 'alias' as const,
     action: (ctx: CommandContext) => {
@@ -55,6 +56,8 @@ export async function getAliasMatchCommand(query: string): Promise<HatchCommand 
   const alias = aliases.find((a) => a.keyword.toLowerCase() === keyword);
   if (!alias) return null;
 
+  const aliasId = alias.id || alias.keyword;
+  const aliasName = alias.name || alias.keyword;
   let url = alias.url;
   const isParameterized = url.includes('%s');
 
@@ -63,8 +66,8 @@ export async function getAliasMatchCommand(query: string): Promise<HatchCommand 
   } else if (isParameterized && !param) {
     // Show hint that parameter is needed
     return {
-      id: `alias-hint-${alias.id}`,
-      name: `${alias.name}: type a query`,
+      id: `alias-hint-${aliasId}`,
+      name: `${aliasName}: type a query`,
       description: `${alias.keyword} <query> → ${alias.url}`,
       keywords: [alias.keyword],
       icon: '⚡',
@@ -74,8 +77,8 @@ export async function getAliasMatchCommand(query: string): Promise<HatchCommand 
   }
 
   return {
-    id: `alias-exec-${alias.id}`,
-    name: isParameterized ? `${alias.name}: ${param}` : alias.name,
+    id: `alias-exec-${aliasId}`,
+    name: isParameterized ? `${aliasName}: ${param}` : aliasName,
     description: url,
     keywords: [alias.keyword],
     icon: '⚡',
@@ -105,7 +108,7 @@ export function getCreateAliasCommand(query: string): HatchCommand | null {
   const name = match[3] || keyword;
 
   return {
-    id: 'create-alias',
+    id: 'create-alias-inline',
     name: `Create Alias: "${keyword}" → ${url}`,
     description: 'Press Enter to save',
     keywords: ['alias', 'create'],

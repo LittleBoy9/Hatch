@@ -132,6 +132,10 @@ export type MessageType =
   // Frecency
   | { type: 'TRACK_USAGE'; commandId: string }
   | { type: 'GET_FRECENCY' }
+  // Bookmarks (write)
+  | { type: 'SAVE_TABS_AS_BOOKMARKS' }
+  // Options
+  | { type: 'OPEN_OPTIONS' }
   // Palette
   | { type: 'OPEN_PALETTE' };
 

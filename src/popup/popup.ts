@@ -1,3 +1,6 @@
+// Mark as a module so top-level names don't collide with other entry scripts
+export {};
+
 function $(id: string) { return document.getElementById(id)!; }
 
 function loadStorage<T>(key: string, fallback: T): Promise<T> {

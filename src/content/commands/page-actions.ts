@@ -103,21 +103,6 @@ export const pageActionCommands: HatchCommand[] = [
 
   // ─── Page Interaction ──────────────────────────────────────
   {
-    id: 'find-on-page',
-    name: 'Find on Page',
-    description: 'Open browser find (Ctrl+F)',
-    keywords: ['find', 'search', 'page', 'text', 'ctrl+f'],
-    icon: '🔎',
-    category: 'command',
-    action: (ctx: CommandContext) => {
-      ctx.close();
-      // Small delay to let palette close before triggering find
-      setTimeout(() => {
-        document.execCommand('find');
-      }, 100);
-    },
-  },
-  {
     id: 'print-page',
     name: 'Print Page',
     description: 'Open the print dialog',

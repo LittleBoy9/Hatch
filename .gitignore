@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Release artifacts (zips are built via `npm run package`)
+*.zip
+
+# OS junk
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+
+# Local tooling data
+.code-review-graph/

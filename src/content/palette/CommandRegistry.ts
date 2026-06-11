@@ -9,12 +9,13 @@ import { getSiteSearchCommand, getSiteSearchHints, getCreateEngineCommand, stati
 import { pageActionCommands } from '../commands/page-actions';
 import { devToolCommands } from '../commands/dev-tools';
 import { tabSuspendCommands } from '../commands/tab-suspend';
-import { getSnippetCommands, staticSnippetCommands } from '../commands/snippets';
+import { getSnippetCommands, getCreateSnippetCommand, staticSnippetCommands } from '../commands/snippets';
 import { getNoteCommands, getNoteCommand, isNotesQuery, staticNoteCommands } from '../commands/notes';
 import { getClipboardCommands, staticClipboardCommands } from '../commands/clipboard';
 import { getAliasCommands, getAliasMatchCommand, getCreateAliasCommand, staticAliasCommands } from '../commands/aliases';
 import { workflowCommands } from '../commands/workflows';
 import { getPerSiteCommands } from '../commands/per-site';
+import { getSiteDisableCommands } from '../commands/site-disable';
 import { importExportCommands } from '../commands/import-export';
 import { getFrecencyData, calculateFrecencyScore, trackCommandUsage } from '../../storage/frecency';
 import { fuzzySearch, type FuzzyResult } from './fuzzy';
@@ -62,6 +63,7 @@ export class CommandRegistry {
     this.dynamicProviders.push(getNoteCommands);
     this.dynamicProviders.push(getClipboardCommands);
     this.dynamicProviders.push(getAliasCommands);
+    this.dynamicProviders.push(getSiteDisableCommands);
   }
 
   async search(rawQuery: string, maxResults: number = 0): Promise<FuzzyResult[]> {
@@ -85,6 +87,12 @@ export class CommandRegistry {
     const aliasCmd = getCreateAliasCommand(query);
     if (aliasCmd) {
       return [{ item: aliasCmd, score: 2, matches: [] }];
+    }
+
+    // trigger | name | body → create a snippet inline
+    const snippetCmd = getCreateSnippetCommand(query);
+    if (snippetCmd) {
+      return [{ item: snippetCmd, score: 2, matches: [] }];
     }
 
     // /notes → list all notes

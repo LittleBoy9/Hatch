@@ -1,20 +1,24 @@
 {
   "name": "hatch",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Universal Cmd+K command palette for the browser",
   "private": true,
   "author": {
     "name": "Sounak Das"
   },
   "scripts": {
-    "build": "node esbuild.config.js",
+    "build": "tsc --noEmit && node esbuild.config.js",
     "watch": "node esbuild.config.js --watch",
-    "clean": "rm -rf dist"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist",
+    "package": "npm run clean && npm test && npm run build && cd dist && zip -rX \"../hatch-v$npm_package_version.zip\" . -x '.*' -x '*/.*'"
   },
   "devDependencies": {
     "@types/chrome": "^0.1.38",
     "esbuild": "^0.20.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^4.1.8"
   },
   "dependencies": {
     "quickfuzz": "^1.0.2"

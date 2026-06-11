@@ -259,7 +259,8 @@ async function handleMessage(msg: MessageType): Promise<unknown> {
 
     case 'SAVE_ALIAS': {
       const aliases = await storageGet<import('../types').Alias[]>('aliases', []);
-      const aIdx = aliases.findIndex((a) => a.id === msg.alias.id);
+      // Same id = edit; same keyword = replace (keywords must stay unique)
+      const aIdx = aliases.findIndex((a) => a.id === msg.alias.id || a.keyword === msg.alias.keyword);
       if (aIdx >= 0) aliases[aIdx] = msg.alias;
       else aliases.push(msg.alias);
       await storageSet('aliases', aliases);
@@ -271,6 +272,10 @@ async function handleMessage(msg: MessageType): Promise<unknown> {
       await storageSet('aliases', aliases.filter((a) => a.id !== msg.id));
       return;
     }
+
+    // ─── Bookmarks (write) ──────────────────────────────
+    case 'SAVE_TABS_AS_BOOKMARKS':
+      return saveTabsAsBookmarks();
 
     // ─── Frecency ────────────────────────────────────────
     case 'TRACK_USAGE':
@@ -352,7 +357,7 @@ async function searchBookmarks(query: string): Promise<BookmarkInfo[]> {
       id: b.id,
       title: b.title || 'Untitled',
       url: b.url!,
-      folderPath: '', // will be resolved below
+      folderPath: '',
     }));
 }
 
@@ -414,7 +419,7 @@ async function getRecentlyClosed(maxResults: number): Promise<ClosedTabInfo[]> {
     if (session.tab) {
       const tab = session.tab;
       results.push({
-        tabId: tab.tabId ?? -1,
+        tabId: tab.id ?? -1,
         windowId: tab.windowId ?? -1,
         sessionId: tab.sessionId ?? '',
         title: tab.title ?? 'Untitled',
@@ -428,11 +433,31 @@ async function getRecentlyClosed(maxResults: number): Promise<ClosedTabInfo[]> {
   return results;
 }
 
+// ─── Bookmarks (write) ───────────────────────────────────────
+
+async function saveTabsAsBookmarks(): Promise<{ saved: number }> {
+  const tabs = await chrome.tabs.query({ currentWindow: true });
+  const toSave = tabs.filter((t) => t.url && /^https?:/.test(t.url));
+  if (toSave.length === 0) return { saved: 0 };
+
+  const date = new Date().toLocaleDateString();
+  // No parentId — defaults to "Other Bookmarks"
+  const folder = await chrome.bookmarks.create({ title: `Saved Tabs — ${date}` });
+  for (const tab of toSave) {
+    await chrome.bookmarks.create({
+      parentId: folder.id,
+      title: tab.title || tab.url!,
+      url: tab.url!,
+    });
+  }
+  return { saved: toSave.length };
+}
+
 // ─── Frecency ────────────────────────────────────────────────
 
 async function trackUsage(commandId: string): Promise<void> {
   const data = await chrome.storage.local.get('frecency');
-  const frecency: Record<string, FrecencyEntry> = data.frecency || {};
+  const frecency = (data.frecency ?? {}) as Record<string, FrecencyEntry>;
 
   const existing = frecency[commandId];
   frecency[commandId] = {
@@ -445,7 +470,7 @@ async function trackUsage(commandId: string): Promise<void> {
 
 async function getFrecency(): Promise<Record<string, FrecencyEntry>> {
   const data = await chrome.storage.local.get('frecency');
-  return data.frecency || {};
+  return (data.frecency ?? {}) as Record<string, FrecencyEntry>;
 }
 
 // ─── Extension Icon Click → Open Palette ─────────────────────
@@ -456,21 +481,6 @@ chrome.action.onClicked.addListener(async (tab) => {
       await chrome.tabs.sendMessage(tab.id, { type: 'OPEN_PALETTE' });
     } catch {
       // Content script not loaded on this page (e.g., chrome:// pages)
-    }
-  }
-});
-
-// ─── Keyboard Shortcut (commands API) ────────────────────────
-
-chrome.commands.onCommand.addListener(async (command) => {
-  if (command === '_execute_action') {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab?.id) {
-      try {
-        await chrome.tabs.sendMessage(tab.id, { type: 'OPEN_PALETTE' });
-      } catch {
-        // Content script not loaded
-      }
     }
   }
 });
