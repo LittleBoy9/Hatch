@@ -5,6 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hatch — The Command Palette Your Browser Deserves</title>
   <meta name="description" content="A universal Cmd+K command palette for Chrome. 80+ commands. Zero servers. Blazing fast.">
+  <link rel="canonical" href="https://littleboy9.github.io/Hatch/">
+  <meta name="theme-color" content="#050510">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://littleboy9.github.io/Hatch/">
+  <meta property="og:site_name" content="Hatch">
+  <meta property="og:title" content="Hatch — The Command Palette Your Browser Deserves">
+  <meta property="og:description" content="A universal Cmd+K command palette for Chrome. 80+ commands. Zero servers. Blazing fast.">
+  <meta property="og:image" content="https://littleboy9.github.io/Hatch/public/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Hatch — universal Cmd+K command palette for Chrome">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Hatch — The Command Palette Your Browser Deserves">
+  <meta name="twitter:description" content="A universal Cmd+K command palette for Chrome. 80+ commands. Zero servers. Blazing fast.">
+  <meta name="twitter:image" content="https://littleboy9.github.io/Hatch/public/og-image.png">
+
   <link rel="icon" type="image/png" href="public/icons/icon-48.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -847,7 +867,47 @@
       opacity: 0;
       transform: translateY(40px);
     }
+
+    /* ─── Reduced Motion / Animation Fallback ───────────────────── */
+    /* All entrance animations start elements at opacity 0 — force
+       everything visible and drop the WebGL background when the user
+       prefers reduced motion, or when the animation scripts fail to
+       load (.anim-failed is set by the safety-net script). */
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #scene-container { display: none; }
+      .reveal, .hero-badge, .hero h1, .hero .subtitle, .hero-actions,
+      .hero-shortcut, .palette-3d-container, .stats-bar,
+      .feature-card, .engine-pill {
+        opacity: 1 !important;
+        transform: none !important;
+      }
+    }
+    .anim-failed #scene-container { display: none; }
+    .anim-failed .reveal, .anim-failed .hero-badge, .anim-failed .hero h1,
+    .anim-failed .hero .subtitle, .anim-failed .hero-actions,
+    .anim-failed .hero-shortcut, .anim-failed .palette-3d-container,
+    .anim-failed .stats-bar, .anim-failed .feature-card,
+    .anim-failed .engine-pill {
+      opacity: 1 !important;
+      transform: none !important;
+    }
   </style>
+  <script>
+    // Safety net: if the CDN animation scripts never run (blocked network,
+    // adblocker, old browser), content would stay at opacity 0 forever.
+    // Reveal everything if the hero is still hidden shortly after load.
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const h1 = document.querySelector('.hero h1');
+        if (h1 && getComputedStyle(h1).opacity === '0') {
+          document.documentElement.classList.add('anim-failed');
+        }
+      }, 3000);
+    });
+  </script>
 </head>
 <body>
 
@@ -858,6 +918,7 @@
     <a href="#features">Features</a>
     <a href="#commands">Commands</a>
     <a href="#search">Search</a>
+    <a href="https://github.com/LittleBoy9/Hatch" target="_blank" rel="noopener">GitHub</a>
     <a href="https://chromewebstore.google.com/detail/hatch/nfbgobfnhldobenkcbigpgnaaekcmoge?hl=en-US&utm_source=https://littleboy9.github.io/Hatch" class="nav-cta">Get Hatch</a>
   </div>
 </nav>
@@ -885,14 +946,14 @@
     </p>
 
     <div class="hero-actions">
-      <button class="btn-primary" onclick="window.open('https://chromewebstore.google.com/detail/hatch/nfbgobfnhldobenkcbigpgnaaekcmoge?hl=en-US&utm_source=https://littleboy9.github.io/Hatch','_blank')">
+      <a class="btn-primary" href="https://chromewebstore.google.com/detail/hatch/nfbgobfnhldobenkcbigpgnaaekcmoge?hl=en-US&utm_source=https://littleboy9.github.io/Hatch" target="_blank" rel="noopener">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Chrome Web Store
-      </button>
-      <button class="btn-secondary" onclick="window.open('https://microsoftedge.microsoft.com/addons/detail/hatch/ncpfdhkcbodijkohnljkeedodcoeohkh','_blank')">
+      </a>
+      <a class="btn-secondary" href="https://microsoftedge.microsoft.com/addons/detail/hatch/ncpfdhkcbodijkohnljkeedodcoeohkh" target="_blank" rel="noopener">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 6v6l4 2"/></svg>
         Edge Add-ons
-      </button>
+      </a>
       <button class="btn-secondary" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">
         See what it does
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
@@ -1046,14 +1107,14 @@
     <h2 class="reveal">Ready to <span class="gradient-text" style="-webkit-text-fill-color:transparent;background:linear-gradient(135deg,#818cf8,#a78bfa,#c084fc);-webkit-background-clip:text;">hatch</span> something?</h2>
     <p class="reveal">Install in under 30 seconds. No sign-up. No config. Just press <kbd>Cmd+K</kbd> on Mac or <kbd>Ctrl+K</kbd> on Windows.</p>
     <div class="hero-actions reveal" style="opacity:1;transform:none;">
-      <button class="btn-primary" onclick="window.open('https://chromewebstore.google.com/detail/hatch/nfbgobfnhldobenkcbigpgnaaekcmoge?hl=en-US&utm_source=https://littleboy9.github.io/Hatch','_blank')">
+      <a class="btn-primary" href="https://chromewebstore.google.com/detail/hatch/nfbgobfnhldobenkcbigpgnaaekcmoge?hl=en-US&utm_source=https://littleboy9.github.io/Hatch" target="_blank" rel="noopener">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Chrome Web Store
-      </button>
-      <button class="btn-secondary" onclick="window.open('https://microsoftedge.microsoft.com/addons/detail/hatch/ncpfdhkcbodijkohnljkeedodcoeohkh','_blank')">
+      </a>
+      <a class="btn-secondary" href="https://microsoftedge.microsoft.com/addons/detail/hatch/ncpfdhkcbodijkohnljkeedodcoeohkh" target="_blank" rel="noopener">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 6v6l4 2"/></svg>
         Edge Add-ons
-      </button>
+      </a>
     </div>
   </section>
 
@@ -1080,7 +1141,7 @@
 
   <!-- Footer -->
   <footer>
-    Built by <a href="https://github.com/littleboy9" target="_blank">Sounak Das</a> &middot; Powered by <a href="https://littleboy9.github.io/quickfuzz" target="_blank">quickfuzz</a> &middot; MIT License
+    Built by <a href="https://github.com/littleboy9" target="_blank">Sounak Das</a> &middot; <a href="https://github.com/LittleBoy9/Hatch" target="_blank" rel="noopener">Source on GitHub</a> &middot; <a href="https://github.com/LittleBoy9/Hatch/blob/main/PRIVACY.md" target="_blank" rel="noopener">Privacy Policy</a> &middot; Powered by <a href="https://littleboy9.github.io/quickfuzz" target="_blank">quickfuzz</a> &middot; MIT License
   </footer>
 
 </div>
@@ -1103,9 +1164,15 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
+// Respect the user's OS-level reduced-motion preference: skip the
+// WebGL scene and all decorative animation (CSS forces content visible).
+const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 // ═══════════════════════════════════════════════════════════════
 // THREE.JS SCENE
 // ═══════════════════════════════════════════════════════════════
+
+if (!REDUCED_MOTION) {
 
 const container = document.getElementById('scene-container');
 const scene = new THREE.Scene();
@@ -1369,11 +1436,15 @@ window.addEventListener('resize', () => {
   composer.setSize(window.innerWidth, window.innerHeight);
 });
 
+} // end if (!REDUCED_MOTION) — Three.js scene
+
 // ═══════════════════════════════════════════════════════════════
 // GSAP ANIMATIONS
 // ═══════════════════════════════════════════════════════════════
 
 gsap.registerPlugin(ScrollTrigger);
+
+if (!REDUCED_MOTION) {
 
 // Hero entrance
 const heroTl = gsap.timeline({ defaults: { ease: 'power3.out' } });
@@ -1417,10 +1488,16 @@ gsap.utils.toArray('.feature-card').forEach((card, i) => {
   });
 });
 
-// Stat counter animation
+} // end if (!REDUCED_MOTION) — entrance/scroll animations
+
+// Stat counter animation (static values under reduced motion)
 document.querySelectorAll('.stat-number').forEach((el) => {
   const count = parseInt(el.dataset.count);
   const text = el.dataset.text;
+  if (REDUCED_MOTION) {
+    el.textContent = text || (count + (count >= 80 ? '+' : ''));
+    return;
+  }
   ScrollTrigger.create({
     trigger: el,
     start: 'top 85%',
@@ -1547,7 +1624,13 @@ async function runDemoLoop() {
     demoIndex = (demoIndex + 1) % DEMO_SCENARIOS.length;
   }
 }
-setTimeout(runDemoLoop, 2500);
+if (REDUCED_MOTION) {
+  // Static demo frame instead of the endless typing loop
+  typedTextEl.textContent = DEMO_SCENARIOS[0].query;
+  renderResults(DEMO_SCENARIOS[0].results);
+} else {
+  setTimeout(runDemoLoop, 2500);
+}
 
 // ═══════════════════════════════════════════════════════════════
 // SEARCH ENGINES ORBIT
@@ -1593,6 +1676,8 @@ engines.forEach((eng, i) => {
   pill.style.left = `${x}px`;
   pill.style.top = `${y}px`;
   orbitContainer.appendChild(pill);
+
+  if (REDUCED_MOTION) return; // CSS forces pills visible; skip float animation
 
   gsap.to(pill, {
     opacity: 1, scale: 1, duration: 0.5, delay: i * 0.06,
@@ -1923,30 +2008,33 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Auto-rotate when in view (slow gentle rotation)
-let autoRotateTimer = null;
-ScrollTrigger.create({
-  trigger: '#commands',
-  start: 'top 60%',
-  onEnter: () => {
-    autoRotateTimer = setInterval(() => {
-      if (!isDragging) goToPanel((currentPanel + 1) % panelCount);
-    }, 4000);
-  },
-  onLeave: () => { clearInterval(autoRotateTimer); },
-  onEnterBack: () => {
-    autoRotateTimer = setInterval(() => {
-      if (!isDragging) goToPanel((currentPanel + 1) % panelCount);
-    }, 4000);
-  },
-  onLeaveBack: () => { clearInterval(autoRotateTimer); },
-});
+// Auto-rotate when in view (slow gentle rotation) — manual nav only
+// under reduced motion
+if (!REDUCED_MOTION) {
+  let autoRotateTimer = null;
+  ScrollTrigger.create({
+    trigger: '#commands',
+    start: 'top 60%',
+    onEnter: () => {
+      autoRotateTimer = setInterval(() => {
+        if (!isDragging) goToPanel((currentPanel + 1) % panelCount);
+      }, 4000);
+    },
+    onLeave: () => { clearInterval(autoRotateTimer); },
+    onEnterBack: () => {
+      autoRotateTimer = setInterval(() => {
+        if (!isDragging) goToPanel((currentPanel + 1) % panelCount);
+      }, 4000);
+    },
+    onLeaveBack: () => { clearInterval(autoRotateTimer); },
+  });
 
-// Entrance animation for carousel
-gsap.from('#carousel-scene', {
-  opacity: 0, scale: 0.8, rotateX: 15, duration: 1.2, ease: 'power3.out',
-  scrollTrigger: { trigger: '#commands', start: 'top 70%', toggleActions: 'play none none reverse' },
-});
+  // Entrance animation for carousel
+  gsap.from('#carousel-scene', {
+    opacity: 0, scale: 0.8, rotateX: 15, duration: 1.2, ease: 'power3.out',
+    scrollTrigger: { trigger: '#commands', start: 'top 70%', toggleActions: 'play none none reverse' },
+  });
+}
 
 // Feature card 3D tilt on hover
 document.querySelectorAll('.feature-card').forEach((card) => {
